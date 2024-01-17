@@ -51,20 +51,23 @@ spec:
       - name: tool-library-storage
         persistentVolumeClaim:
           claimName: tool-library-pvc
-          
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: tool-library-service
+  namespace: default
+  labels:
+    app: tool-library-app
 spec:
+  type: ClusterIP
   selector:
     app: tool-library-app
   ports:
-    - name: http
-      port: 8000
-      nodePort: 32701
-  type: NodePort
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

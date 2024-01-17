@@ -3,8 +3,9 @@ from typing import Dict, Any, List
 from prance import ResolvingParser
 from tool_library.tools import FastApiRouteTool
 
+
 class FastApiToolFactory:
-    def __init__(self, service_url: str, add_routes:List[str]=None):
+    def __init__(self, service_url: str, add_routes: List[str] = None):
         self.service_url = service_url
         self.tools = []
         self.schema = None
@@ -23,7 +24,7 @@ class FastApiToolFactory:
         if not self.schema:
             self.fetch_openapi_schema()
 
-        for path, methods in self.schema.get('paths', {}).items():
+        for path, methods in self.schema.get("paths", {}).items():
             if self.add_routes and path not in self.add_routes:
                 continue
 
@@ -31,8 +32,16 @@ class FastApiToolFactory:
                 params = details
                 self._create_tool_from_endpoint(path, method, details, params)
 
-    def _create_tool_from_endpoint(self, path: str, method: str, details: Dict[str, Any], params: List[Dict[str, Any]]) -> None:
+    def _create_tool_from_endpoint(
+        self,
+        path: str,
+        method: str,
+        details: Dict[str, Any],
+        params: List[Dict[str, Any]],
+    ) -> None:
         tool_name = f"{method.upper()} {path}"
-        description = details.get('summary', 'No description available')
+        description = details.get("summary", "No description available")
         endpoint_url = f"{self.service_url}{path}"
-        self.tools.append(FastApiRouteTool(tool_name, description, method, endpoint_url, params))
+        self.tools.append(
+            FastApiRouteTool(tool_name, description, method, endpoint_url, params)
+        )

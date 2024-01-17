@@ -18,19 +18,21 @@ NEW_MESSAGE = "You can now use this tool, use find_tools to find out how to use 
 REMOVED_TOOL = "Tool Removed"
 REMOVED_MESSAGE = "You can no longer use this tool."
 
+
 class ToolLibrary:
-    def __init__(self, embedding_model:str='all-MiniLM-L6-v2'):
+    def __init__(self, embedding_model: str = "all-MiniLM-L6-v2"):
         self.tools = {}
-        self.model = SentenceTransformer(embedding_model)  # Initialize the sentence transformer model
+        self.model = SentenceTransformer(
+            embedding_model
+        )  # Initialize the sentence transformer model
         self.embeddings = {}  # Dictionary to store tool embeddings
         self.event_log = EventLog()
-        
 
-    def _create_embeddings(self, tool:Tool):
+    def _create_embeddings(self, tool: Tool):
         # Create embeddings for name and description
 
         props = [tool.name, tool.description]
-        embeddings =self.model.encode(props)
+        embeddings = self.model.encode(props)
         return embeddings
 
     def _update_embeddings_index(self, name: str, embeddings):
@@ -45,35 +47,30 @@ class ToolLibrary:
     def register_tool(self, name: str, description: str, function: Callable):
         if name in self.tools:
             raise ValueError(f"A tool with the name '{name}' is already registered.")
-        
+
         if is_ray_remote_function(function):
-            self.tools[name] = RayTool(name, description, function)    
+            self.tools[name] = RayTool(name, description, function)
         else:
             self.tools[name] = Tool(name, description, function)
 
         self.event_log.add_event(NEW_TYPE, name, NEW_MESSAGE)
         self.register_tool_embeddings(self.tools[name])
-        
 
     def register_api_tool(self, service_url="http://127.0.0.1:8000", add_routes=None):
-        belt = FastApiToolFactory(
-            service_url=service_url, add_routes=add_routes
-        )
+        belt = FastApiToolFactory(service_url=service_url, add_routes=add_routes)
         belt.introspect_service()
 
-        for t in  belt.tools:
+        for t in belt.tools:
             self.tools[t.name] = t
             self.register_tool_embeddings(self.tools[t.name])
             self.event_log.add_event(
-                event_type=NEW_TYPE,
-                tool=t.name, message=NEW_MESSAGE
+                event_type=NEW_TYPE, tool=t.name, message=NEW_MESSAGE
             )
 
     def execute_tool(self, tool_name: str, params: Dict) -> Any:
         if tool_name not in self.tools:
             raise ValueError(f"Tool '{tool_name}' not found.")
         return self.tools[tool_name].execute(params)
-
 
     def find_tools(self, query: str, top_k: int = 3) -> List[str]:
         # Create a flat list of all embeddings and a corresponding mapping to tool names
@@ -82,7 +79,7 @@ class ToolLibrary:
 
         for name, embeddings in self.embeddings.items():
             corpus_embeddings.extend(embeddings)
-            corpus.extend([name]*len(embeddings))
+            corpus.extend([name] * len(embeddings))
 
         # Convert to a 2D tensor where each row is an embedding
         corpus_embeddings = torch.tensor(corpus_embeddings)
@@ -105,15 +102,19 @@ class ToolLibrary:
         for score, idx in zip(top_results[0], top_results[1]):
             if score > 0.5:  # Threshold for similarity
                 tool_name = corpus[idx]
-                if tool_name not in [result["name"] for result in results]:  # Remove duplicates
-                    results.append({"name": tool_name, "params": self.tools[tool_name].params})
+                if tool_name not in [
+                    result["name"] for result in results
+                ]:  # Remove duplicates
+                    results.append(
+                        {"name": tool_name, "params": self.tools[tool_name].params}
+                    )
 
         return results
 
     def get_events(self, minutes_ago=0):
         return self.event_log.find_events(minutes_ago)
 
-    def get_tools(self)-> Dict:
+    def get_tools(self) -> Dict:
         return self.tools
 
     def remove_tool(self, name):
@@ -123,7 +124,7 @@ class ToolLibrary:
             event_log.add_event(REMOVED_TOOL, name, REMOVED_MESSAGE)
             return True
         return False
-        
+
     def get_tool_stats(self, tool_name: str) -> Dict:
         if tool_name not in self.tools:
             raise ValueError(f"Tool '{tool_name}' not found.")
@@ -132,5 +133,5 @@ class ToolLibrary:
         return {
             "creation_time": stats.creation_time,
             "call_count": stats.call_count,
-            "average_execution_time": stats.average_execution_time
+            "average_execution_time": stats.average_execution_time,
         }

@@ -16,13 +16,13 @@ spec:
       - name: tool-library-container
         image: python:3.8-slim
         env:
-        - name: USE_AUTH
-          value: "False"
         ports:
         - containerPort: 8000
         env:
         - name: TL_USE_AUTH
           value: "False"
+        - name: TL_MASTER_KEY
+          value: ""
         command: ["/bin/sh", "-c"]
         args:
         - |

@@ -1,9 +1,11 @@
 import datetime
 
+
 class Event:
     """
     A class to represent an event.
     """
+
     def __init__(self, time, tool, event_type, message):
         """
         Initialize the Event object.
@@ -22,8 +24,6 @@ class Event:
         String representation of the Event object.
         """
         return f"Time: {self.time}, Type: {self.type}, Tool: {self.tool}, Message: {self.message}"
-
-
 
 
 class EventLog:
@@ -70,13 +70,12 @@ class EventLog:
         # Filter events that occurred after the last check time
         return [event for event in self.events if event.time >= last_check_time]
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     # Example Usage
     event_log = EventLog()
     event_log.add_event("Warning", "PC", "Low battery")
     event_log.add_event("Error", "PC", "System failure")
-
 
     # Query for events since 5 minutes ago
     recent_events = event_log.find_events(5)
@@ -90,5 +89,3 @@ if __name__ == "__main__":
     recent_events = event_log.find_events(0)
     for event in recent_events:
         print(event)
-
-

@@ -1,4 +1,3 @@
-
 import requests
 import logging
 import time
@@ -36,9 +35,9 @@ class Tool:
 
     def to_json(self):
         return {
-            "name":self.name,
-            "description":self.description,
-            "params": self.params
+            "name": self.name,
+            "description": self.description,
+            "params": self.params,
         }
 
     def get_type_hints(self, func):
@@ -51,12 +50,12 @@ class Tool:
         for param_name, param_type in type_hints.items():
             if issubclass(param_type, BaseModel):
                 model_schema = param_type.schema()
-                for field_name, field_info in model_schema['properties'].items():
+                for field_name, field_info in model_schema["properties"].items():
                     param_info = {
                         "name": field_name,
                         "in": "body",
-                        "required": field_name in model_schema.get('required', []),
-                        "schema": field_info
+                        "required": field_name in model_schema.get("required", []),
+                        "schema": field_info,
                     }
                     parameters.append(param_info)
             else:
@@ -65,7 +64,7 @@ class Tool:
                     "name": param_name,
                     "in": "query",  # Assuming query parameters for simple types
                     "required": True,  # Assuming all simple type parameters are required
-                    "schema": {"type": str(param_type)}
+                    "schema": {"type": str(param_type)},
                 }
                 parameters.append(param_info)
 
@@ -79,6 +78,7 @@ class Tool:
     def _execute(self, params):
         return self.function(**params)
 
+
 class FastApiRouteTool(Tool):
     def __init__(self, name, description, method, endpoint_url, params):
         self.name = name
@@ -91,13 +91,17 @@ class FastApiRouteTool(Tool):
     def _execute(self, payload: Dict, auth=None) -> Any:
         headers = {}
         if auth:
-            headers['Authorization'] = auth
+            headers["Authorization"] = auth
 
         try:
-            if self.method == 'GET':
-                response = requests.get(self.endpoint_url, params=payload, headers=headers)
-            elif self.method == 'POST':
-                response = requests.post(self.endpoint_url, json=payload, headers=headers)
+            if self.method == "GET":
+                response = requests.get(
+                    self.endpoint_url, params=payload, headers=headers
+                )
+            elif self.method == "POST":
+                response = requests.post(
+                    self.endpoint_url, json=payload, headers=headers
+                )
             # Add other HTTP methods as necessary
             response.raise_for_status()
             return response.json()
@@ -115,14 +119,13 @@ try:
 
         @classmethod
         def is_ray_remote_function(func):
-            return hasattr(func, 'remote') and callable(getattr(func, 'remote'))
+            return hasattr(func, "remote") and callable(getattr(func, "remote"))
 
         def get_type_hints(self, func):
-            if hasattr(func, '_function'):
+            if hasattr(func, "_function"):
                 # Access the original function
                 func = func._function
                 return get_type_hints(func)
-                
 
         def _execute(self, params: Dict) -> Any:
             # Submit a Ray task
@@ -130,8 +133,6 @@ try:
 
             # Retrieve and return the result
             return ray.get(future)
+
 except:
     logger.warning("Cannot import ray, to use ray functions, install tool-library[ray]")
-
-    
-

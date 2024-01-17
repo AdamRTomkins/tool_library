@@ -17,8 +17,10 @@ logging.basicConfig(
 
 
 USE_AUTH = os.environ.get("TL_USE_AUTH", True)
-if USE_AUTH == "False":
+if USE_AUTH == "False" or USE_AUTH == False:
     USE_AUTH = False
+else:
+    USE_AUTH = True
 
 logger.warning(f"USE_AUTH { USE_AUTH}")
 

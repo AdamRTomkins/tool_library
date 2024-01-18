@@ -36,7 +36,7 @@ spec:
           pip install transformers tqdm numpy scikit-learn scipy nltk sentencepiece
           pip install --no-deps sentence-transformers==2.2.2
           pip install -e .
-          uvicorn tool_library.api:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/private.key --ssl-certfile certs/certificate.crt
+          uvicorn tool_library.api:app --host secure.kalavai.net --port 8000 --ssl-keyfile certs/private.key --ssl-certfile certs/certificate.crt
         resources:
           limits:
             cpu: 2

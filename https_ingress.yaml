@@ -14,7 +14,7 @@ spec:
                 name: tool-library-service
                 port:
                   number: 8000
-            path: /
+            path: /tools
   # This section is only required if TLS is to be enabled for the Ingress
   tls:
   - hosts:

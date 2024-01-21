@@ -8,7 +8,7 @@ metadata:
     kubernetes.io/tls-acme: "true"
 spec:
   rules:
-    - host: tools.test.k8s.mvp.kalavai.net
+    - host: test.k8s.mvp.kalavai.net
       http:
         paths:
           - pathType: Prefix

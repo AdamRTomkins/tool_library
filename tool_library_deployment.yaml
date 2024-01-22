@@ -83,3 +83,30 @@ spec:
   resources:
     requests:
       storage: 12Gi # Adjust the storage size as needed
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tools-library-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Add a DNS record to match this URL to the IP of the cluster
+    - host: tools.test.k8s.mvp.kalavai.net
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: tool-library-service
+                port:
+                  number: 80
+            path: /
+  tls:
+  - hosts:
+    - tools.test.k8s.mvp.kalavai.net
+    secretName: tools.test.k8s.mvp.kalavai.net-tls

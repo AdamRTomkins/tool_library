@@ -56,8 +56,8 @@ class ToolLibrary:
         self.event_log.add_event(NEW_TYPE, name, NEW_MESSAGE)
         self.register_tool_embeddings(self.tools[name])
 
-    def register_api_tool(self, service_url="http://127.0.0.1:8000", add_routes=None):
-        belt = FastApiToolFactory(service_url=service_url, add_routes=add_routes)
+    def register_api_tool(self, service_url="http://127.0.0.1:8000", tool_routes=None):
+        belt = FastApiToolFactory(service_url=service_url, tool_routes=tool_routes)
         belt.introspect_service()
 
         for t in belt.tools:

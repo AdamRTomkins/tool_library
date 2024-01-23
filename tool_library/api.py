@@ -40,8 +40,6 @@ def validate_api_key(request: Request):
 
 app = FastAPI()
 tool_library = ToolLibrary()
-# tool_library.register_api_tool()
-
 
 @app.post("/register-api-tool/")
 async def register_api_tool(
@@ -50,7 +48,7 @@ async def register_api_tool(
     # This will need to be adapted based on how you want to handle the dynamic function registration
     logger.info(request)
     try:
-        tool_library.register_api_tool(request.service_url, request.add_routes)
+        tool_library.register_api_tool(request.service_url, request.tool_routes)
         return {"message": "Tool registered successfully"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -75,7 +73,7 @@ async def execute_tool(
 # Endpoint to get tool statistics
 @app.get("/tool-stats/{tool_name}", response_model=ToolStatsResponse)
 async def get_tool_stats(tool_name: str, api_key: str = Depends(validate_api_key)):
-    logger.info(request)
+    #logger.info(request)
     try:
         stats = tool_library.get_tool_stats(tool_name)
         return stats

@@ -5,11 +5,11 @@ from tool_library.tools import FastApiRouteTool
 
 
 class FastApiToolFactory:
-    def __init__(self, service_url: str, add_routes: List[str] = None):
+    def __init__(self, service_url: str, tool_routes: List[str] = None):
         self.service_url = service_url
         self.tools = []
         self.schema = None
-        self.add_routes = add_routes
+        self.tool_routes = tool_routes
         self.introspect_service()
 
     def fetch_openapi_schema(self) -> None:
@@ -25,7 +25,7 @@ class FastApiToolFactory:
             self.fetch_openapi_schema()
 
         for path, methods in self.schema.get("paths", {}).items():
-            if self.add_routes and path not in self.add_routes:
+            if self.tool_routes and path not in self.tool_routes:
                 continue
 
             for method, details in methods.items():

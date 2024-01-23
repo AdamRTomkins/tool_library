@@ -11,7 +11,8 @@ class ToolRegistrationRequest(BaseModel):
 
 class APIToolRegistrationRequest(BaseModel):
     service_url: str
-    add_routes: Optional[List[str]] = None
+    tool_routes: Optional[List[str]] = None
+    api_key: Optional[str] = None # Currently Unsed
 
 
 class ToolExecutionRequest(BaseModel):

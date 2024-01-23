@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: adam
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tool-library-app
+  namespace: adam
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tool-library-app
+  template:
+    metadata:
+      labels:
+        app: tool-library-app
+    spec:
+      containers:
+        - name: tool-library-container
+          image: python:3.8-slim
+          command: ["/bin/sh", "-c"]
+          
+          args:
+            - |
+              # Set the working directory
+              apt-get update && apt-get install -y git
+              ls
+              git clone https://github.com/AdamRTomkins/tool_library.git /app/tool-library
+              cd /app/tool-library
+              
+              # torch CPU
+              pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+              pip install transformers tqdm numpy scikit-learn scipy nltk sentencepiece
+              pip install --no-deps sentence-transformers==2.2.2
+
+              # Install the package using pip in editable mode
+              pip install -e .
+
+              # Start the UVicorn server
+              uvicorn tool_library.api:app --host 0.0.0.0 --port 8010
+          resources:
+            limits:
+              cpu: 2
+              memory: "8Gi"
+              #ephemeral-storage: "$ephemeral_memory"
+            requests:
+              cpu: 2 # must accommodate num-cores requested for execution
+              memory: "8Gi" # must accommodate for the model's weights
+              #ephemeral-storage: "$ephemeral_memory"
+          ports:
+            - containerPort: 8010
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tool-library-service
+  namespace: adam
+spec:
+  selector:
+    app: tool-library-app
+  ports:
+    - name: http
+      port: 8010
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tool-library-pvc
+  namespace: adam
+spec:
+  storageClassName: longhorn-nr # Replace with your storage class name
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 12Gi # Adjust the storage size as needed

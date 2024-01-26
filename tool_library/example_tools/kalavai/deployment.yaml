@@ -40,7 +40,8 @@ spec:
           pip install fastapi
           pip install uvicorn
           ls
-          uvicorn tool_library.example_tools.kalavai.tool_example.api:app --host 0.0.0.0 --port 8000
+          cd tool_library/example_tools/kalavai/tool_example
+          uvicorn tool_example.api:app --host 0.0.0.0 --port 8000
         resources:
           limits:
             cpu: 2

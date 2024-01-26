@@ -40,7 +40,9 @@ spec:
           pip install fastapi
           pip install uvicorn
           ls
-          cd tool_library/
+          cd tool_library
+          ls
+          cd tool_library
           ls
           cd example_tools
           ls

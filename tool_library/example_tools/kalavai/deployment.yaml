@@ -36,6 +36,7 @@ spec:
           ls
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
+          git checkout feature/updates
           # install fast api
           pip install fastapi
           pip install uvicorn

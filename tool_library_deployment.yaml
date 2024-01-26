@@ -29,9 +29,8 @@ spec:
         - |
           apt-get update && apt-get install -y git
           ls
-          git clone https://github.com/AdamRTomkins/tool_library.git /app/tool-library
+          git clone https://github.com/kalavai-net/tool_library.git /app/tool-library
           cd /app/tool-library
-          git checkout feature/https
           # torch CPU
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install transformers tqdm numpy scikit-learn scipy nltk sentencepiece
@@ -41,10 +40,10 @@ spec:
         resources:
           limits:
             cpu: 2
-            memory: "4Gi"
+            memory: "1Gi"
           requests:
             cpu: 2 # must accommodate num-cores requested for execution
-            memory: "4Gi" # must accommodate for the tool's weights
+            memory: "1Gi" # must accommodate for the tool's weights
         volumeMounts:
         - name: tool-library-storage
           mountPath: "/tool"
@@ -82,7 +81,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 12Gi # Adjust the storage size as needed
+      storage: 1Gi # Adjust the storage size as needed
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

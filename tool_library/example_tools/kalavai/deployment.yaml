@@ -42,8 +42,6 @@ spec:
           ls
           cd tool_library
           ls
-          cd tool_library
-          ls
           cd example_tools
           ls
           cd kalavai

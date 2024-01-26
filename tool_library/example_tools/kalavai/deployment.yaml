@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tools
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: tools
+  name: kalavai-tool-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kalavai-tool-app
+  template:
+    metadata:
+      labels:
+        app: kalavai-tool-app
+    spec:
+      containers:
+      - name: kalavai-tool-container
+        image: python:3.8-slim
+        env:
+        ports:
+        - containerPort: 8000
+        env:
+        - name: TL_USE_AUTH
+          value: "False"
+        - name: TL_MASTER_KEY
+          value: ""
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apt-get update && apt-get install -y git
+          ls
+          git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
+          cd /app/tool_library
+          # install fast api
+          pip install fastapi
+          pip install uvicorn
+          ls
+          uvicorn tool_library.example_tools.kalavai.tool_example.api:app --host 0.0.0.0 --port 8000
+        resources:
+          limits:
+            cpu: 2
+            memory: "1Gi"
+          requests:
+            cpu: 2 
+            memory: "1Gi"
+        volumeMounts:
+        - name: kalavai-tool-storage
+          mountPath: "/tool"
+      restartPolicy: Always
+      volumes:
+      - name: kalavai-tool-storage
+        #persistentVolumeClaim:
+        #  claimName: kalavai-tool-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kalavai-tool-service
+  namespace: tools
+  labels:
+    app: kalavai-tool
+spec:
+  selector:
+    app: kalavai-tool
+  ports:
+    - name: http
+      port: 8000
+      #nodePort: 32701
+  type: NodePort
+---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: kalavai-tool-pvc
+#  namespace: tools
+#spec:
+#  storageClassName: longhorn-nr # Replace with your storage class name
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 1Gi # Adjust the storage size as needed
+#---

@@ -25,9 +25,9 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: TL_USE_AUTH
+        - name: TOOL_USE_AUTH
           value: "False"
-        - name: TL_MASTER_KEY
+        - name: TOOL_MASTER_KEY
           value: ""
         command: ["/bin/sh", "-c"]
         args:

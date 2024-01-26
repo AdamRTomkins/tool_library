@@ -80,7 +80,7 @@ class Tool:
 
 
 class FastApiRouteTool(Tool):
-    def __init__(self, name, description, method, endpoint_url, params):
+    def __init__(self, name, description, method, endpoint_url, params, api_key=None):
         self.name = name
         self.description = description
         self.method = method.upper()
@@ -88,19 +88,21 @@ class FastApiRouteTool(Tool):
         self.params = params
         self.stats = ToolStats()
 
-    def _execute(self, payload: Dict, auth=None) -> Any:
-        headers = {}
-        if auth:
-            headers["Authorization"] = auth
+        self.api_key = api_key  
+        self.headers = {}
+        if api_key is not None:
+            self.headers = {'X-API-KEY': api_key}
 
+    def _execute(self, payload: Dict) -> Any:
+        
         try:
             if self.method == "GET":
                 response = requests.get(
-                    self.endpoint_url, params=payload, headers=headers
+                    self.endpoint_url, params=payload, headers=self.headers
                 )
             elif self.method == "POST":
                 response = requests.post(
-                    self.endpoint_url, json=payload, headers=headers
+                    self.endpoint_url, json=payload, headers=self.headers
                 )
             # Add other HTTP methods as necessary
             response.raise_for_status()

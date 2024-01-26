@@ -5,13 +5,15 @@ from tool_library.tools import FastApiRouteTool
 
 
 class FastApiToolFactory:
-    def __init__(self, service_url: str, tool_routes: List[str] = None, schema: Dict[str, Any] = None):
+    def __init__(self, service_url: str, tool_routes: List[str] = None, schema: Dict[str, Any] = None, api_key: str = None):
         self.service_url = service_url
         self.tools = []
         self.schema = schema
         self.tool_routes = tool_routes
+        self.api_key = api_key
         if not self.schema:
             self.introspect_service()
+
 
     def fetch_openapi_schema(self) -> None:
         try:
@@ -44,5 +46,5 @@ class FastApiToolFactory:
         description = details.get("summary", "No description available")
         endpoint_url = f"{self.service_url}{path}"
         self.tools.append(
-            FastApiRouteTool(tool_name, description, method, endpoint_url, params)
+            FastApiRouteTool(tool_name, description, method, endpoint_url, params, api_key=self.api_key)
         )

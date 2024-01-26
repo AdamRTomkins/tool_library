@@ -71,10 +71,10 @@ metadata:
   name: kalavai-tool-service
   namespace: tools
   labels:
-    app: kalavai-tool
+    app: kalavai-tool-app
 spec:
   selector:
-    app: kalavai-tool
+    app: kalavai-tool-app
   ports:
     - name: http
       port: 8000

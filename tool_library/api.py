@@ -48,7 +48,7 @@ async def register_api_tool(
     # This will need to be adapted based on how you want to handle the dynamic function registration
     logger.info(request)
     try:
-        tool_library.register_api_tool(request.service_url, request.tool_routes)
+        tool_library.register_api_tool(request.tool_url, request.tool_routes)
         return {"message": "Tool registered successfully"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -122,7 +122,6 @@ async def remove_tool(tool_name: str, api_key: str = Depends(validate_api_key)):
 @app.get("/health/")
 async def health():
     return HTTPException(status_code=200, detail="OK")
-
 
 if __name__ == "__main__":
     import uvicorn

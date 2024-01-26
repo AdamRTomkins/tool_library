@@ -26,7 +26,7 @@ class ToolLibraryClient:
 
         # TODO: Add API KEY to Headers
 
-        data = {"service_url": tool_url, "tool_routes": tool_routes}
+        data = {"tool_url": tool_url, "tool_routes": tool_routes}
         response = requests.post(f"{self.service_url}/register-api-tool/", headers=self.headers, json=data)
         response.raise_for_status()
         return response.json()

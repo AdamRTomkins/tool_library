@@ -66,7 +66,7 @@ class ToolLibrary:
             self.event_log.add_event(
                 event_type=NEW_TYPE, tool=t.name, message=NEW_MESSAGE
             )
-
+    
     def execute_tool(self, tool_name: str, params: Dict) -> Any:
         if tool_name not in self.tools:
             raise ValueError(f"Tool '{tool_name}' not found.")

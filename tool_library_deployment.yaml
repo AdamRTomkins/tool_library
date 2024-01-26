@@ -50,8 +50,8 @@ spec:
       restartPolicy: Always
       volumes:
       - name: tool-library-storage
-        persistentVolumeClaim:
-          claimName: tool-library-pvc
+        #persistentVolumeClaim:
+        #  claimName: tool-library-pvc
 
 ---
 apiVersion: v1
@@ -70,19 +70,19 @@ spec:
     targetPort: 8000
     protocol: TCP
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: tool-library-pvc
-  namespace: default
-spec:
-  storageClassName: longhorn-nr # Replace with your storage class name
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi # Adjust the storage size as needed
----
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: tool-library-pvc
+#  namespace: default
+#spec:
+#  storageClassName: longhorn-nr # Replace with your storage class name
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 1Gi # Adjust the storage size as needed
+#---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

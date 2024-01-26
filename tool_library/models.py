@@ -10,7 +10,7 @@ class ToolRegistrationRequest(BaseModel):
 
 
 class APIToolRegistrationRequest(BaseModel):
-    service_url: str
+    tool_url: str
     tool_routes: Optional[List[str]] = None
     api_key: Optional[str] = None # Currently Unsed
 

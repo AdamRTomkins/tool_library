@@ -41,7 +41,8 @@ spec:
           pip install uvicorn
           ls
           cd tool_library/example_tools/kalavai/tool_example
-          uvicorn tool_example.api:app --host 0.0.0.0 --port 8000
+          ls
+          uvicorn api:app --host 0.0.0.0 --port 8000
         resources:
           limits:
             cpu: 2

@@ -52,8 +52,8 @@ spec:
           cd example_tools
           cd chat_ui
           pip install -r requirements.txt
-          apt-get update -y
-          apt-get install -y gettext
+          #apt-get update -y
+          #apt-get install -y gettext
           sh prepare.sh
           chainlit run chat_ui.py -h --port 8000
         resources:

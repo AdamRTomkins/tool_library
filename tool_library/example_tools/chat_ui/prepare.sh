@@ -1,5 +1,5 @@
 # Substitute environment variables in _readme.md and output to new_readme.md
-envsubst < _chainlit.md > chainlit.md
+#envsubst < _chainlit.md > chainlit.md
 
 #!/bin/sh
 

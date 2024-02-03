@@ -1,8 +1,8 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: tools
----
+#apiVersion: v1
+#kind: Namespace
+#metadata:
+#  name: tools
+#---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: chat-ui-container
-        image: python:3.8-slim
+        image: python:3.11-slim
         ports:
         - containerPort: 8000
         env:
@@ -44,6 +44,8 @@ spec:
         args:
         - |
           apt-get update && apt-get install -y git
+          pip install chainlit
+          apt-get install -y gettext
           ls
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
@@ -52,8 +54,6 @@ spec:
           cd example_tools
           cd chat_ui
           pip install -r requirements.txt
-          #apt-get update -y
-          #apt-get install -y gettext
           sh prepare.sh
           chainlit run chat_ui.py -h --port 8000
         resources:

@@ -1,5 +1,5 @@
+openai
 chainlit==1.0.200
-
 fastapi
 uvicorn
 langchain

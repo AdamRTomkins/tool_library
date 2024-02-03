@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#export LLM_API_KEY="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"
+#export LLM_API_KEY="sk-..."
 #export LLM_MODEL="gpt-3.5-turbo"
 
 export LLM_API_KEY="None"

@@ -7,28 +7,39 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: tools
-  name: rag-tool-app
+  name: chat-ui-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rag-tool-app
+      app: chat-ui-app
   template:
     metadata:
       labels:
-        app: rag-tool-app
+        app: chat-ui-app
     spec:
       containers:
-      - name: rag-tool-container
+      - name: chat-ui-container
         image: python:3.8-slim
-        env:
         ports:
         - containerPort: 8000
         env:
-        - name: RAG_USE_AUTH
-          value: "False"
-        - name: RAG_MASTER_KEY
-          value: ""
+        - name: LLM_API_KEY
+          value: "None"
+        - name: LLM_MODEL
+          value: "phi-2"
+        - name: LLM_BASE_URL
+          value: "http://178.62.13.8:31095"
+        - name: RETRIEVER_BASE_URL
+          value: "http://178.62.13.8:31645"
+        - name: RETRIEVER_API_KEY
+          value: "None"
+        - name: CHAT_USE_AUTH
+          value: "True"
+        - name: USERNAME
+          value: "Adam"
+        - name: PASSWORD
+          value: "kalavai"
         command: ["/bin/sh", "-c"]
         args:
         - |
@@ -36,19 +47,13 @@ spec:
           ls
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
-          git checkout feature/updates
-          # install fast api
-          pip install fastapi
-          pip install uvicorn
-          ls
+          git checkout feature/updates          
           cd tool_library
-          ls
           cd example_tools
-          ls
-          cd rag
+          cd chat_ui
           pip install -r requirements.txt
-          ls
-          uvicorn api:app --host 0.0.0.0 --port 8000
+          sh prepare.sh
+          chainlit run chat_ui.py -h --port 8000
         resources:
           limits:
             cpu: 2
@@ -57,25 +62,25 @@ spec:
             cpu: 2 
             memory: "4Gi"
         volumeMounts:
-        - name: rag-tool-storage
+        - name: chat-ui-storage
           mountPath: "/tool"
       restartPolicy: Always
       volumes:
-      - name: rag-tool-storage
+      - name: chat-ui-storage
         #persistentVolumeClaim:
-        #  claimName: rag-tool-pvc
+        #  claimName: chat-ui-pvc
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: rag-tool-service
+  name: chat-ui-service
   namespace: tools
   labels:
-    app: rag-tool-app
+    app: chat-ui-app
 spec:
   selector:
-    app: rag-tool-app
+    app: chat-ui-app
   ports:
     - name: http
       port: 8000
@@ -85,7 +90,7 @@ spec:
 #apiVersion: v1
 #kind: PersistentVolumeClaim
 #metadata:
-#  name: rag-tool-pvc
+#  name: chat-ui-pvc
 #  namespace: tools
 #spec:
 #  storageClassName: longhorn-nr # Replace with your storage class name

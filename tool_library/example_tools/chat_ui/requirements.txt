@@ -1,4 +1,5 @@
 fastapi
 uvicorn
-chainlit
 langchain
+chainlit==1.0.200
+

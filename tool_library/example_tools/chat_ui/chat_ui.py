@@ -91,11 +91,13 @@ class KalavaiRetriever(BaseRetriever):
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
-        search_results = self.faiss_client.search(query)
-        documents = [Document(page_content=result['text'], metadata=result['attributes']) for result in search_results]
+        try:
+            search_results = self.faiss_client.search(query)
+            documents = [Document(page_content=result['text'], metadata=result['attributes']) for result in search_results]
+        except Exception as e:
+            documents = []
+            logger.error(f"Error retrieving documents: {e}")
         return documents
-
-
 
 from typing import Optional
 import chainlit as cl

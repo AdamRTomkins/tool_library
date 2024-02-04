@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tools
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: tools
+  name: rag-tool-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-tool-app
+  template:
+    metadata:
+      labels:
+        app: rag-tool-app
+    spec:
+      containers:
+      - name: rag-tool-container
+        image: python:3.8-slim
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RAG_USE_AUTH
+          value: "False"
+        - name: RAG_MASTER_KEY
+          value: ""
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apt-get update && apt-get install -y git
+          git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
+          cd /app/tool_library
+          git checkout feature/updates
+          pip install fastapi uvicorn
+          cd tool_library/example_tools/rag
+          pip install -r requirements.txt
+          uvicorn api:app --host 0.0.0.0 --port 8000
+        resources:
+          limits:
+            cpu: 2
+            memory: "4Gi"
+          requests:
+            cpu: 2
+            memory: "4Gi"
+        volumeMounts:
+        - name: rag-tool-storage
+          mountPath: "/tool"
+      restartPolicy: Always
+      volumes:
+      - name: rag-tool-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-tool-service
+  namespace: tools
+spec:
+  selector:
+    app: rag-tool-app
+  ports:
+    - name: http
+      port: 8000
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: tools
+  name: chat-ui-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chat-ui-app
+  template:
+    metadata:
+      labels:
+        app: chat-ui-app
+    spec:
+      containers:
+      - name: chat-ui-container
+        image: python:3.11-slim
+        ports:
+        - containerPort: 8000
+        env:
+        - name: LLM_API_KEY
+          value: "None"
+        - name: LLM_MODEL
+          value: "phi-2"
+        - name: LLM_BASE_URL
+          #value: "http://rag-tool-service.tools.svc.cluster.local:8000" # Updated to use the internal DNS name
+          value: "http://local-ai-cpu-service.adam.svc.cluster.local:8000" # Updated to use the internal DNS name
+        - name: RETRIEVER_BASE_URL
+          value: "http://rag-tool-service.tools.svc.cluster.local" # Example, replace with actual service if you have it
+        - name: RETRIEVER_API_KEY
+          value: "None"
+        - name: CHAT_USE_AUTH
+          value: "True"
+        - name: USERNAME
+          value: "Adam"
+        - name: PASSWORD
+          value: "kalavai"
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apt-get update && apt-get install -y git
+          pip install chainlit
+          apt-get install -y gettext
+          git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
+          cd /app/tool_library
+          git checkout feature/updates          
+          cd tool_library/example_tools/chat_ui
+          pip install -r requirements.txt
+          sh prepare.sh
+          chainlit run chat_ui.py --port 8000
+        resources:
+          limits:
+            cpu: 2
+            memory: "4Gi"
+          requests:
+            cpu: 2
+            memory: "4Gi"
+        volumeMounts:
+        - name: chat-ui-storage
+          mountPath: "/tool"
+      restartPolicy: Always
+      volumes:
+      - name: chat-ui-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-ui-service
+  namespace: tools
+spec:
+  selector:
+    app: chat-ui-app
+  ports:
+    - name: http
+      port: 8000
+  type: NodePort

@@ -78,6 +78,15 @@ custom_css = "/public/custom.css"
         #dark = "#980039"
         #light = "#FFE7EB"
 
+[UI.theme.light]
+    background = "#FAFAFA"
+    paper = "#FFFFFF"
+
+    [UI.theme.dark.light]
+        main = "#F80061"
+        dark = "#980039"
+        light = "#FFE7EB"
+
 # Override default MUI dark theme. (Check theme.ts)
 [UI.theme.dark]
     #background = "#FAFAFA"

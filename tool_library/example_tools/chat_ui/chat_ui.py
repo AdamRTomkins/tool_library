@@ -23,10 +23,21 @@ logger.info(f"RETRIEVER_API_KEY: {str(RETRIEVER_API_KEY)[:4]}...")
 
 os.environ["OPENAI_API_KEY"] = LLM_API_KEY
 
+
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import StrOutputParser
 from langchain.schema.runnable import Runnable
 from langchain.schema.runnable.config import RunnableConfig
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from langchain_core.documents import Document
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_community.chat_models import ChatOpenAI
+from typing import List
+
+from chainlit.input_widget import *
+from typing import Optional
 
 import chainlit as cl
 import requests
@@ -68,19 +79,6 @@ class FAISSClient:
         response.raise_for_status()
         return response.json()
 
-## Integrationsfrom langchain_core.retrievers import BaseRetriever
-from langchain_core.retrievers import BaseRetriever
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_community.chat_models import ChatOpenAI
-from typing import List
-
-from pydantic import BaseModel
-from chainlit.input_widget import *
-from typing import Optional
-
 class KalavaiRetriever(BaseRetriever):
     faiss_client: Optional[FAISSClient] = None
 
@@ -99,8 +97,6 @@ class KalavaiRetriever(BaseRetriever):
             logger.error(f"Error retrieving documents: {e}")
         return documents
 
-from typing import Optional
-import chainlit as cl
 
 if USE_AUTH:
     @cl.password_auth_callback

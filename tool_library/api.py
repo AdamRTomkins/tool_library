@@ -48,7 +48,7 @@ async def register_api_tool(
     # This will need to be adapted based on how you want to handle the dynamic function registration
     logger.info(request)
     try:
-        tool_library.register_api_tool(request.tool_url, request.tool_routes)
+        tool_library.register_api_tool(request.tool_url, request.tool_routes, )
         return {"message": "Tool registered successfully"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

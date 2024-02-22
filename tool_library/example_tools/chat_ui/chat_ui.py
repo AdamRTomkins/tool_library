@@ -106,7 +106,6 @@ if USE_AUTH:
         user = auth_user(username, password)
         if user is not None:
             api_key = user["api_key"]
-            print(f"Hello {username}, API KEY {api_key}")
             return cl.User(
                 identifier=username, metadata={"role": "user", "provider": "credentials", "api_key": api_key}
             )

@@ -15,8 +15,6 @@ RETRIEVER_BASE_URL = os.environ.get("RETRIEVER_BASE_URL")
 RETRIEVER_API_KEY = os.environ.get("RETRIEVER_API_KEY")
 
 USE_AUTH = os.environ.get("CHAT_USE_AUTH", "False").lower() in ("true", "1", "t", "yes")
-USERNAME = os.environ.get("USERNAME", "admin")
-PASSWORD = os.environ.get("PASSWORD", "kalavai")
 
 
 logger.info(f"LLM_API_KEY: {str(LLM_API_KEY)[:4]}...")

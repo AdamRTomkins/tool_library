@@ -13,6 +13,7 @@ The Kalavai Personal Document AI Assistant is configured with the following sett
 - **Retriever API Key**: `${RETRIEVER_API_KEY}`
 - **Chat Use Auth**: `${CHAT_USE_AUTH}`
 - **Chat Master Key**: `${CHAT_MASTER_KEY}`
+- **Anvil Webapp for auth**: `${ANVIL_UPLINK_KEY}`
 
 ## Introduction
 

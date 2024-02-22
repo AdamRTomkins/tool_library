@@ -3,4 +3,5 @@ chainlit==1.0.200
 fastapi
 uvicorn
 langchain
-
+anvil-app-server
+anvil-uplink

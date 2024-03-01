@@ -43,6 +43,7 @@ import chainlit as cl
 import requests
 from typing import List, Dict, Any
 
+# Move these too a specific REPO for the RAG when we have it
 class FAISSClient:
     def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
@@ -110,8 +111,6 @@ if USE_AUTH:
         else:
             return None
 
-
-
 @cl.on_chat_start
 async def main():
     pass
@@ -128,6 +127,8 @@ async def on_chat_start():
     llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
     retriever = KalavaiRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
 
+    cl.user_session.set("retriever", retriever)
+
     def format_docs(docs):
         print(docs)
         return "\n\n".join([d.page_content for d in docs])
@@ -142,9 +143,88 @@ async def on_chat_start():
     cl.user_session.set("runnable", chain)
 
 
+async def knowledge_describe(**args):
+
+    # get the faiss client
+    retriever = cl.user_session.get("retriever")
+    faiss_client = retriever.faiss_client
+    url = faiss_client.base_url
+    api_key = faiss_client.api_key
+
+    info = faiss_client.index_info()
+    num = info["number_of_items"]
+    
+    await cl.Message(content=f"Your Knowledge Base: \n- URL: {url} \n- API_KEY {api_key}\n Number of Documents: {num}").send()
+
+
+async def knowledge_update(url=None, api_key=None):
+
+    # get the faiss client
+    retriever = cl.user_session.get("retriever")
+    faiss_client = retriever.faiss_client
+    updates = []
+    if url:
+        faiss_client.base_url = url
+        updates.append("URL")
+    if api_key:
+        faiss_client.api_key = api_key
+        updates.append("API KEY")
+    url = faiss_client.base_url
+    api_key = faiss_client.api_key
+
+    await cl.Message(content=f"Updating the Knowledge Base: \n- URL: {url} \n- API_KEY {api_key}").send()
+
+async def knowledge_search(text:str):
+    # get the faiss client
+    retriever = cl.user_session.get("retriever")
+    faiss_client = retriever.faiss_client
+    docs = faiss_client.search(text)
+
+    for doc in docs:
+        await cl.Message(content=doc).send()
+
+cli = {
+    "knowledge": {
+        "description": "This tool allows you to search for knowledge",
+        "functions": {
+            "describe": knowledge_describe,
+            "update": knowledge_update,
+        }
+    }
+}
+
+async def triage(message: cl.Message):
+    # if its about 
+    if message.content.startswith("/"):
+        args = message.content[1:].split(" ")
+        command = args[0]
+        
+        if len(args) < 2:
+            function = "describe"
+            kwargs = {}
+        else:
+            function = args[1]
+            kwargs = args[2:]
+            kwargs = {k.lower(): v for k, v in [kw.split("=") for kw in kwargs]}
+
+        if command in cli:
+            if function in cli[command]["functions"]:
+                await cli[command]["functions"][function](**kwargs)
+            else:
+                await cl.Message(content=f"I don't understand that function {function}. Please use one of {cli[command]['functions'].keys()}").send()
+        else:
+            await cl.Message(content=f"I don't understand that command {command}. Please use one of {cli.keys()}").send()
+        return True
+    
+    return False
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
 
+    triaged = await triage(message)
+    if triaged: return
+    
     runnable = cl.user_session.get("runnable")  # type: Runnable
     msg = cl.Message(content="")
 

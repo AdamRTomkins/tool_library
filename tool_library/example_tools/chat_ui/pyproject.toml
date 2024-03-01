@@ -1,0 +1,39 @@
+[tool.poetry]
+name        = "kalavai_chat_ui"
+version     = "0.1.0"
+description = "Smart Library of Functions"
+authors     = ["Adam Tomkins <artomkins@googlemail.com>"]
+
+
+[tool.poetry.dependencies]
+python                  = ">= 3.8, < 4.0" 
+fastapi                 = { version = "0.101.1", extras = ["all"] }
+pyyaml                  = { version = "6.0.1" }
+
+# interface
+chainlit                = { version = "1.0.200" }
+
+
+[tool.poetry.extras]
+
+dev = [
+    "black"
+]
+
+
+
+[tool.poetry.dev-dependencies]
+click = "*"
+pre-commit = "*"
+black = "*"
+xenon = "*"
+mypy = "*"
+pydocstyle = "*"
+
+
+[build-system]
+requires        = [
+    "poetry-core>=1.0.0",
+    "setuptools"  # for pip install -e
+]
+build-backend   = "poetry.core.masonry.api"

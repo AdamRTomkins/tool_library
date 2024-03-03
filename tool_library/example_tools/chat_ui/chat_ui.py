@@ -5,8 +5,8 @@ logger = logging.getLogger(__name__)
  
 # Pull in all our environment variables
 LLM_API_KEY = os.environ["LLM_API_KEY"]
-LLM_MODEL = os.environ.get("LLM_MODEL", "phi-2")
-LLM_BASE_URL = os.environ.get("LLM_BASE_URL")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
 RETRIEVER_BASE_URL = os.environ.get("RETRIEVER_BASE_URL")
 RETRIEVER_API_KEY = os.environ.get("RETRIEVER_API_KEY")
 
@@ -124,7 +124,11 @@ async def on_chat_start():
     Question: {question}
     """
     prompt = ChatPromptTemplate.from_template(template)
-    llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
+    if LLM_BASE_URL:
+        llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
+    else:
+        llm = ChatOpenAI(model=LLM_MODEL)
+ 
     retriever = KalavaiRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
 
     cl.user_session.set("retriever", retriever)

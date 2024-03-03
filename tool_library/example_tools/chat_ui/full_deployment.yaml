@@ -7,16 +7,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: tools
-  name: rag-tool-app
+  name: combined-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rag-tool-app
+      app: combined-app
   template:
     metadata:
       labels:
-        app: rag-tool-app
+        app: combined-app
     spec:
       containers:
       - name: rag-tool-container
@@ -41,61 +41,27 @@ spec:
           uvicorn api:app --host 0.0.0.0 --port 8000
         resources:
           limits:
-            cpu: 2
+            cpu: "2"
             memory: "4Gi"
           requests:
-            cpu: 2
-            memory: "4Gi"
+            cpu: "1"
+            memory: "2Gi"
         volumeMounts:
-        - name: rag-tool-storage
+        - name: shared-storage
           mountPath: "/tool"
-      restartPolicy: Always
-      volumes:
-      - name: rag-tool-storage
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: rag-tool-service
-  namespace: tools
-spec:
-  selector:
-    app: rag-tool-app
-  ports:
-    - name: http
-      port: 8000
-  type: NodePort
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: tools
-  name: chat-ui-app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: chat-ui-app
-  template:
-    metadata:
-      labels:
-        app: chat-ui-app
-    spec:
-      containers:
       - name: chat-ui-container
         image: python:3.11-slim
         ports:
-        - containerPort: 8000
+        - containerPort: 8001
         env:
         - name: LLM_API_KEY
           value: "None"
         - name: LLM_MODEL
           value: "phi-2"
         - name: LLM_BASE_URL
-          #value: "http://rag-tool-service.tools.svc.cluster.local:8000" # Updated to use the internal DNS name
-          value: "http://local-ai-cpu-service.adam.svc.cluster.local:8000" # Updated to use the internal DNS name
+          value: "http://localhost:8000"
         - name: RETRIEVER_BASE_URL
-          value: "http://rag-tool-service.tools.svc.cluster.local" # Example, replace with actual service if you have it
+          value: "http://localhost:8000"
         - name: RETRIEVER_API_KEY
           value: "None"
         - name: CHAT_USE_AUTH
@@ -107,29 +73,29 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
-          apt-get update && apt-get install -y git
+          apt-get update && apt-get install -y git gettext
           pip install chainlit
-          apt-get install -y gettext
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
           git checkout feature/updates          
           cd tool_library/example_tools/chat_ui
           pip install -r requirements.txt
           sh prepare.sh
-          chainlit run chat_ui.py --port 8000
+          chainlit run chat_ui.py --port 8001
         resources:
           limits:
-            cpu: 2
+            cpu: "2"
             memory: "4Gi"
           requests:
-            cpu: 2
-            memory: "4Gi"
+            cpu: "1"
+            memory: "2Gi"
         volumeMounts:
-        - name: chat-ui-storage
-          mountPath: "/tool"
+        - name: shared-storage
+          mountPath: "/data"
       restartPolicy: Always
       volumes:
-      - name: chat-ui-storage
+      - name: shared-storage
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -138,8 +104,42 @@ metadata:
   namespace: tools
 spec:
   selector:
-    app: chat-ui-app
+    app: combined-app
   ports:
-    - name: http
-      port: 8000
+  - name: chat-ui
+    port: 8001
+    targetPort: 8001
+    #nodePort: 30001 # Specify a nodePort in the range allowed by your cluster (usually 30000-32767)
   type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-tool-service
+  namespace: tools
+spec:
+  selector:
+    app: combined-app
+  ports:
+  - name: rag-tool
+    port: 8000
+    targetPort: 8000
+    #nodePort: 30001 # Specify a nodePort in the range allowed by your cluster (usually 30000-32767)
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: combined-service
+  namespace: tools
+spec:
+  selector:
+    app: combined-app
+  ports:
+  - name: rag-tool
+    port: 8000
+    targetPort: 8000
+  - name: chat-ui
+    port: 8001
+    targetPort: 8001
+  type: ClusterIP

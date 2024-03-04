@@ -36,10 +36,8 @@ spec:
           value: "None"
         - name: CHAT_USE_AUTH
           value: "True"
-        - name: USERNAME
-          value: "Adam"
-        - name: PASSWORD
-          value: "kalavai"
+        - name: ANVIL_UPLINK_KEY
+          value: "client_A2ZZVMV6LLHVCZ4XSMTOWTSH-ADMVMYW5OIRPH75P"
         command: ["/bin/sh", "-c"]
         args:
         - |
@@ -49,7 +47,7 @@ spec:
           ls
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
-          git checkout feature/updates          
+          git checkout auth       
           cd tool_library
           cd example_tools
           cd chat_ui
@@ -85,20 +83,33 @@ spec:
     app: chat-ui-app
   ports:
     - name: http
-      port: 8000
-      #nodePort: 32701
-  type: NodePort
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
 ---
-#apiVersion: v1
-#kind: PersistentVolumeClaim
-#metadata:
-#  name: chat-ui-pvc
-#  namespace: tools
-#spec:
-#  storageClassName: longhorn-nr # Replace with your storage class name
-#  accessModes:
-#    - ReadWriteOnce
-#  resources:
-#    requests:
-#      storage: 1Gi # Adjust the storage size as needed
-#---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chat-ui-app-ingress
+  namespace: tools
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Add a DNS record to match this URL to the IP of the cluster
+    - host: chat.test.k8s.mvp.kalavai.net
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: chat-ui-service
+                port:
+                  number: 80
+            path: /
+  tls:
+  - hosts:
+    - chat.test.k8s.mvp.kalavai.net
+    secretName: chat.test.k8s.mvp.kalavai.net-tls

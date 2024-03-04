@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
-RETRIEVER_BASE_URL = os.environ.get("RETRIEVER_BASE_URL")
-RETRIEVER_API_KEY = os.environ.get("RETRIEVER_API_KEY")
 
 USE_AUTH = os.environ.get("CHAT_USE_AUTH", "False").lower() in ("true", "1", "t", "yes")
 
@@ -20,8 +18,8 @@ USE_AUTH = os.environ.get("CHAT_USE_AUTH", "False").lower() in ("true", "1", "t"
 logger.info(f"LLM_API_KEY: {str(LLM_API_KEY)[:4]}...")
 logger.info(f"LLM_MODEL: {LLM_MODEL}")
 logger.info(f"LLM_BASE_URL: {LLM_BASE_URL}")
-logger.info(f"RETRIEVER_BASE_URL: {RETRIEVER_BASE_URL}")
-logger.info(f"RETRIEVER_API_KEY: {str(RETRIEVER_API_KEY)[:4]}...")
+#logger.info(f"RETRIEVER_BASE_URL: {RETRIEVER_BASE_URL}")
+#logger.info(f"RETRIEVER_API_KEY: {str(RETRIEVER_API_KEY)[:4]}...")
 
 os.environ["OPENAI_API_KEY"] = LLM_API_KEY
 
@@ -101,18 +99,24 @@ class KalavaiRetriever(BaseRetriever):
         return documents
 
 
-if USE_AUTH:
-    @cl.password_auth_callback
-    def auth_callback(username: str, password: str):
-        user = auth_user(username, password)
 
-        if user is not None:
-            api_key = user["api_key"]
-            return cl.User(
-                identifier=username, metadata={"role": "user", "provider": "credentials", "api_key": api_key}
-            )
-        else:
-            return None
+@cl.password_auth_callback
+def auth_callback(username: str, password: str):
+    user = auth_user(username, password)
+
+    print(user)
+
+    if user is not None:
+        api_key = user["api_key"]
+
+        knowledge_base_url = user["knowledge_base_url"]
+        knowledge_base_api = user["api_key"]
+
+        return cl.User(
+            identifier=username, metadata={"role": "user", "provider": "credentials", "api_key": api_key, "knowledge_base_url":knowledge_base_url, "knowledge_base_api":knowledge_base_api}
+        )
+    else:
+        return None
 
 @cl.on_chat_start
 async def on_chat_start():  
@@ -127,18 +131,16 @@ async def on_chat_start():
         llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
     else:
         llm = ChatOpenAI(model=LLM_MODEL)
- 
 
+    RETRIEVER_BASE_URL = cl.user_session.get("user").metadata.get("knowledge_base_url")
+    RETRIEVER_API_KEY = cl.user_session.get("user").metadata.get("api_key")
 
     retriever = KalavaiRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
 
     cl.user_session.set("retriever", retriever)
 
     def format_docs(docs):
-        print(docs)
         return "\n\n".join([d.page_content for d in docs])
-
-
 
     chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}

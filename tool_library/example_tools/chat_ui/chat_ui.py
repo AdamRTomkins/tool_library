@@ -105,6 +105,7 @@ if USE_AUTH:
     @cl.password_auth_callback
     def auth_callback(username: str, password: str):
         user = auth_user(username, password)
+
         if user is not None:
             api_key = user["api_key"]
             return cl.User(
@@ -127,6 +128,8 @@ async def on_chat_start():
     else:
         llm = ChatOpenAI(model=LLM_MODEL)
  
+
+
     retriever = KalavaiRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
 
     cl.user_session.set("retriever", retriever)
@@ -134,6 +137,8 @@ async def on_chat_start():
     def format_docs(docs):
         print(docs)
         return "\n\n".join([d.page_content for d in docs])
+
+
 
     chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}

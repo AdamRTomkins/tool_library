@@ -1,5 +1,9 @@
 import os
 import logging
+
+from auth import auth_user
+
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)   
  
@@ -11,8 +15,6 @@ RETRIEVER_BASE_URL = os.environ.get("RETRIEVER_BASE_URL")
 RETRIEVER_API_KEY = os.environ.get("RETRIEVER_API_KEY")
 
 USE_AUTH = os.environ.get("CHAT_USE_AUTH", "False").lower() in ("true", "1", "t", "yes")
-USERNAME = os.environ.get("USERNAME", "admin")
-PASSWORD = os.environ.get("PASSWORD", "kalavai")
 
 
 logger.info(f"LLM_API_KEY: {str(LLM_API_KEY)[:4]}...")
@@ -102,18 +104,14 @@ class KalavaiRetriever(BaseRetriever):
 if USE_AUTH:
     @cl.password_auth_callback
     def auth_callback(username: str, password: str):
-        # Fetch the user matching username from your database
-        # and compare the hashed password with the value stored in the database
-        if (username, password) == (USERNAME, PASSWORD):
+        user = auth_user(username, password)
+        if user is not None:
+            api_key = user["api_key"]
             return cl.User(
-                identifier="admin", metadata={"role": "admin", "provider": "credentials"}
+                identifier=username, metadata={"role": "user", "provider": "credentials", "api_key": api_key}
             )
         else:
             return None
-
-@cl.on_chat_start
-async def main():
-    pass
 
 @cl.on_chat_start
 async def on_chat_start():  

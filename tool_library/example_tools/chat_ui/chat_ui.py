@@ -80,6 +80,62 @@ class FAISSClient:
         response.raise_for_status()
         return response.json()
 
+# Move these too a specific REPO for the RAG when we have it
+class KnowledgeClient:
+    def __init__(self, base_url: str, api_key: str):
+        self.base_url = base_url
+        self.api_key = api_key
+        self.headers = {"X-API-KEY": self.api_key}
+
+    def search(self, query: str, namespace:str) -> List[Dict[str, Any]]:
+        response = requests.get(f"{self.base_url}/search/", params={"query": query,"namespace":namespace}, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def add_items(self, files: List) -> Dict[str, Any]:
+        # Prepare multipart/form-data files
+        # Note: 'files' in requests.post() can be a list of tuples for multiple files
+        # TODO: ALIGN WITH CARLOS API
+        
+        if type(files) != list:
+            files = [files]
+        multipart_files = [('file', (f.name, f, 'application/pdf')) for f in files]
+
+        # Send the POST request to upload files
+        response = requests.post(f"{self.base_url}/index/", files=multipart_files, headers=self.headers)
+
+        # Close the file objects
+        for f in files:
+            f.close()
+
+        return response
+
+
+
+    def index_info(self) -> Dict[str, Any]:
+        response = requests.get(f"{self.base_url}/info/", headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+class KBRetriever(BaseRetriever):
+    kb_client: Optional[KnowledgeClient] = None
+
+    def __init__(self, base_url: str, api_key: str):
+        super().__init__()
+        self.kb_client = KnowledgeClient(base_url, api_key)
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> List[Document]:
+        try:
+            search_results = self.kb_client.search(query)
+            documents = [Document(page_content=result['text'], metadata=result['attributes']) for result in search_results]
+        except Exception as e:
+            documents = []
+            logger.error(f"Error retrieving documents: {e}")
+        return documents
+
+
 class KalavaiRetriever(BaseRetriever):
     faiss_client: Optional[FAISSClient] = None
 
@@ -97,6 +153,7 @@ class KalavaiRetriever(BaseRetriever):
             documents = []
             logger.error(f"Error retrieving documents: {e}")
         return documents
+
 
 
 
@@ -120,13 +177,18 @@ def auth_callback(username: str, password: str):
 
 @cl.on_chat_start
 async def on_chat_start():  
+
+    #cl.user_session.set("kb_client", kb_client)
+
     template = """Answer the question based only on the following context:
     
     {context}
 
     Question: {question}
     """
+
     prompt = ChatPromptTemplate.from_template(template)
+
     if LLM_BASE_URL:
         llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
     else:
@@ -135,7 +197,10 @@ async def on_chat_start():
     RETRIEVER_BASE_URL = cl.user_session.get("user").metadata.get("knowledge_base_url")
     RETRIEVER_API_KEY = cl.user_session.get("user").metadata.get("api_key")
 
-    retriever = KalavaiRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
+    RETRIEVER_BASE_URL = "http://127.0.0.1:8011"
+    RETRIEVER_API_KEY = None
+
+    retriever = KBRetriever(base_url=RETRIEVER_BASE_URL, api_key=RETRIEVER_API_KEY)
 
     cl.user_session.set("retriever", retriever)
 
@@ -151,6 +216,7 @@ async def on_chat_start():
 
     cl.user_session.set("runnable", chain)
 
+    msg = await cl.Message(content="Welcome", actions = forever_actions()).send()
 
 async def knowledge_describe(**args):
 
@@ -228,6 +294,57 @@ async def triage(message: cl.Message):
     return False
 
 
+@cl.action_callback("index_files")
+async def on_action(action: cl.Action):
+
+    file = await cl.AskFileMessage(
+            content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"]}
+        ).send()
+
+
+    retriever = cl.user_session.get("retriever")
+    kb_client = retriever.kb_client
+    address = kb_client.base_url
+
+    files = [
+        open(f.path, "rb")
+        for f in file
+    ]
+
+    outputs = []
+
+    for file in files:
+        async with cl.Step(name="Test") as step:
+        # Step is sent as soon as the context manager is entered
+            step.input = f"Upfloading {f.name}"
+            res = kb_client.add_items(files=file)
+            step.output = res
+
+
+
+
+
+    elements = [
+                    cl.Text(name="Result", content=str(res.json()), display="inline", language="json"),
+                    cl.Pdf(name="pdf1", display="inline", url=address+res.json()["url"])
+    ]
+    await cl.Message(content=f"Uploaded Files", elements=elements).send()
+     
+
+def forever_actions():
+    # Generate your forever actions
+    actions = [
+        cl.Action(
+            name="index_files", 
+            label = f'Add New Files to the Chat',
+            description=f'Upload A new document',
+            collapsed=True,
+            value=""
+        ),
+    ]
+
+    return actions
+
 @cl.on_message
 async def on_message(message: cl.Message):
 
@@ -243,4 +360,6 @@ async def on_message(message: cl.Message):
     ):
         await msg.stream_token(chunk)
 
+    msg.actions = forever_actions()
+    msg.update()
     await msg.send()

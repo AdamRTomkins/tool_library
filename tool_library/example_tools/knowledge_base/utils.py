@@ -1,0 +1,107 @@
+import shutil
+from pathlib import Path
+import os
+
+from langchain.retrievers import (
+    ContextualCompressionRetriever,
+    EnsembleRetriever,
+    ParentDocumentRetriever
+)
+from langchain.retrievers.document_compressors import EmbeddingsFilter
+from langchain.storage import LocalFileStore
+from langchain_community.vectorstores import Chroma
+from langchain.storage._lc_store import create_kv_docstore
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+
+FULL_DOC_LENGTH = 2000
+DOC_LENGTH = 500
+OVERLAP_LENGTH = 0
+SEARCH_TYPE = "mmr"
+
+
+def save_upload_file(upload_file, base_folder):
+    file_path = os.path.join(base_folder, upload_file.filename)
+    destination = Path(file_path)
+    try:
+        with destination.open("wb") as buffer:
+            shutil.copyfileobj(upload_file.file, buffer)
+    finally:
+        upload_file.file.close()
+        return file_path
+    
+def get_parent_text_splitter():
+    return RecursiveCharacterTextSplitter(
+        #separators=["\n\n", "\n", ". ", ""],
+        keep_separator=True,
+        chunk_size=FULL_DOC_LENGTH,
+        chunk_overlap=0,
+        length_function=len,
+        is_separator_regex=False,
+    )
+    
+
+def get_chunk_text_splitter():
+    return RecursiveCharacterTextSplitter(
+        #separators=["\n\n", "\n", ". ", ""],
+        keep_separator=True,
+        chunk_size=DOC_LENGTH,
+        chunk_overlap=OVERLAP_LENGTH,
+        length_function=len,
+        is_separator_regex=False,
+    )
+
+
+def load_document_retriever(index_name, embedding, top_k=10, similarity_threshold=0.5, docs=None, base_path="."):
+    doc_store = create_kv_docstore(LocalFileStore(f"{base_path}/doc_store/{index_name}"))
+    vector_store = Chroma(index_name, embedding, persist_directory=f"{base_path}/vector_store/{index_name}")
+
+    child_splitter = get_chunk_text_splitter()
+    parent_splitter = get_parent_text_splitter()
+    
+    retriever = ParentDocumentRetriever(
+        vectorstore=vector_store,
+        docstore=doc_store,
+        child_splitter=child_splitter,
+        parent_splitter=parent_splitter,
+        search_type=SEARCH_TYPE,
+        search_kwargs={"k": top_k}
+    )
+    if docs is not None:
+        retriever.add_documents(docs)
+    
+
+    embeddings_filter = EmbeddingsFilter(embeddings=embedding, similarity_threshold=similarity_threshold)
+    compression_retriever = ContextualCompressionRetriever(
+        base_compressor=embeddings_filter, base_retriever=retriever
+    )
+    
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[compression_retriever], weights=[0.5]
+    )
+    
+    return ensemble_retriever
+
+
+def index_documents(docs, index_name, base_folder, embedder):
+    # embedding = HuggingFaceInferenceAPIEmbeddings(
+    #     api_url=embedder.api_url,
+    #     api_key=embedder.api_key,
+    #     embedding_id=embedder.embedding_id
+    # )
+
+    embedding = OpenAIEmbeddings(
+        model=embedder.embedding_id, 
+        dimensions=1024,
+        openai_api_key=embedder.api_key)
+
+    retriever = load_document_retriever(
+        index_name=index_name,
+        embedding=embedding,
+        docs=docs,
+        base_path=base_folder
+    )
+    return retriever
+

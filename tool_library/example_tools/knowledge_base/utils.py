@@ -53,8 +53,22 @@ def get_chunk_text_splitter():
         is_separator_regex=False,
     )
 
+def load_embedding(embedder):
+    # embedding = HuggingFaceInferenceAPIEmbeddings(
+    #     api_url=embedder.api_url,
+    #     api_key=embedder.api_key,
+    #     embedding_id=embedder.embedding_id
+    # )
 
-def load_document_retriever(index_name, embedding, top_k=10, similarity_threshold=0.5, docs=None, base_path="."):
+    embedding = OpenAIEmbeddings(
+        model=embedder.embedding_id, 
+        dimensions=1024,
+        openai_api_key=embedder.api_key)
+    return embedding
+
+
+def load_document_retriever(index_name, embedder, top_k=10, similarity_threshold=0.5, docs=None, base_path="."):
+    embedding = load_embedding(embedder)
     doc_store = create_kv_docstore(LocalFileStore(f"{base_path}/doc_store/{index_name}"))
     vector_store = Chroma(index_name, embedding, persist_directory=f"{base_path}/vector_store/{index_name}")
 
@@ -86,22 +100,21 @@ def load_document_retriever(index_name, embedding, top_k=10, similarity_threshol
 
 
 def index_documents(docs, index_name, base_folder, embedder):
-    # embedding = HuggingFaceInferenceAPIEmbeddings(
-    #     api_url=embedder.api_url,
-    #     api_key=embedder.api_key,
-    #     embedding_id=embedder.embedding_id
-    # )
-
-    embedding = OpenAIEmbeddings(
-        model=embedder.embedding_id, 
-        dimensions=1024,
-        openai_api_key=embedder.api_key)
 
     retriever = load_document_retriever(
         index_name=index_name,
-        embedding=embedding,
+        embedder=embedder,
         docs=docs,
         base_path=base_folder
     )
     return retriever
 
+
+def process_retriever_results(results):
+    """Process results from retrievers into something we want to send back via HTTP responses"""
+    processed_results = []
+    for result in results:
+        res = result
+        res.state["embedded_doc"] = None
+        processed_results.append(res)
+    return processed_results

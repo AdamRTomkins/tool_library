@@ -11,7 +11,9 @@ import logging
 from models import EmbeddingConfig
 from utils import (
     save_upload_file,
-    index_documents
+    index_documents,
+    load_document_retriever,
+    process_retriever_results
 )
 
 from langchain_community.document_loaders import PyPDFium2Loader
@@ -76,13 +78,25 @@ async def health():
 async def search_index(query: str, index_name: str, api_key: str = Depends(verify_api_key)):
     if not query:
         raise HTTPException(status_code=400, detail="Query text is required")
-    results =  None
-    return results
+    if not index_name:
+        raise HTTPException(status_code=400, detail="Index name is required")
+    retriever = load_document_retriever(
+        index_name=index_name,
+        embedder=embedder,
+        top_k=10,
+        similarity_threshold=0.5,
+        base_path=DB_BASE_FOLDER)
+    results = retriever.invoke(query)
+
+    return process_retriever_results(results)
+
 
 # Endpoint to add pdf files to the index
 @app.post("/add")
 async def upload_file(file: UploadFile = File(...), username: str = None, api_key: str = Depends(verify_api_key)):
     # Do here your stuff with the file
+    if not file:
+        raise HTTPException(status_code=400, detail="File is required")
     t = time.time()
     docs = []
     file_path = save_upload_file(

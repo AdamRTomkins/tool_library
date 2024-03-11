@@ -27,7 +27,7 @@ USE_AUTH = not os.getenv("KB_USE_AUTH", "True").lower() in ("false", "0", "f", "
 MASTER_KEY = os.getenv("KB_MASTER_KEY")
 DB_BASE_FOLDER = os.getenv("DB_BASE_FOLDER", "./data")
 EMBEDDING_API_URL = os.getenv("EMBEDDING_API_URL", "http://127.0.0.1:8080") #"https://embedding.test.k8s.mvp.kalavai.net")
-EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "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")
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "None")
 EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "text-embedding-3-small") #"BAAI/bge-large-en-v1.5")
 
 

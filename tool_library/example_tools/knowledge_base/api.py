@@ -75,16 +75,18 @@ async def health():
 
 # Endpoint to search the index
 @app.get("/search/", tags=["Search"])
-async def search_index(query: str, index_name: str, api_key: str = Depends(verify_api_key)):
+async def search_index(query: str, index_name: str, top_k: int, similarity_threshold: float, api_key: str = Depends(verify_api_key)):
     if not query:
         raise HTTPException(status_code=400, detail="Query text is required")
     if not index_name:
         raise HTTPException(status_code=400, detail="Index name is required")
+    if not top_k or not similarity_threshold:
+        raise HTTPException(status_code=400, detail="Top_k and similarity_thresholds are required")
     retriever = load_document_retriever(
         index_name=index_name,
         embedder=embedder,
-        top_k=10,
-        similarity_threshold=0.5,
+        top_k=top_k,
+        similarity_threshold=similarity_threshold,
         base_path=DB_BASE_FOLDER)
     results = retriever.invoke(query)
 

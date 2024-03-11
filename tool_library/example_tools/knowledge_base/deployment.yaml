@@ -1,7 +1,3 @@
-# PVC to store doc_store and vector_store
-# Deployment to have the API service to handle search and add documents
-# service to expose the FastAPI
-# ingress to make the service reachable from the outside
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -98,7 +94,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: chat-ui-app-ingress
+  name: knowledge-base-ingress
   namespace: assistant-mvp
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -113,7 +109,7 @@ spec:
           - pathType: Prefix
             backend:
               service:
-                name: model-library-service
+                name: knowledge-base-service
                 port:
                   number: 80
             path: /

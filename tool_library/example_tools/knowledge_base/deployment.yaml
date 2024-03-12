@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: assistant-mvp
+  name: knowledge-base-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: knowledge-base-app
+  template:
+    metadata:
+      labels:
+        app: knowledge-base-app
+    spec:
+      containers:
+      - name: knowledge-base-container
+        image: python:3.8-slim
+        env:
+        ports:
+        - containerPort: 8000
+        env:
+        - name: KB_USE_AUTH
+          value: "True"
+        - name: KB_MASTER_KEY
+          value: "CARLOS_ANNIE_ADAM_KALAVAI"
+        - name: DB_BASE_FOLDER
+          value: "/kb_data"
+        - name: EMBEDDING_API_URL
+          value: "http://127.0.0.1:8080"
+        - name: EMBEDDING_API_KEY
+          value: ""
+        - name: EMBEDDING_MODEL_ID
+          value: "text-embedding-3-small"
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apt-get update && apt-get install -y git
+          apt-get install -y gettext
+          git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
+          cd /app/tool_library
+          cd tool_library
+          cd example_tools
+          cd knowledge_base
+          pip install -r requirements.txt
+          uvicorn api:app --host 0.0.0.0 --port 8000
+        resources:
+          limits:
+            cpu: 2
+            memory: "4Gi"
+          requests:
+            cpu: 2 
+            memory: "4Gi"
+        volumeMounts:
+        - name: knowledge-base-storage
+          mountPath: "/kb_data"
+      restartPolicy: Always
+      volumes:
+      - name: knowledge-base-storage
+        persistentVolumeClaim:
+          claimName: knowledge-base-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-base-service
+  namespace: assistant-mvp
+  labels:
+    app: knowledge-base-app
+spec:
+  selector:
+    app: knowledge-base-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: knowledge-base-pvc
+  namespace: assistant-mvp
+spec:
+  storageClassName: longhorn-nr
+  accessModes:
+   - ReadWriteOnce
+  resources:
+   requests:
+    storage: 10Gi
+---
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: knowledge-base-ingress
+  namespace: assistant-mvp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Add a DNS record to match this URL to the IP of the cluster
+    - host: knowledgebase.test.k8s.mvp.kalavai.net
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: knowledge-base-service
+                port:
+                  number: 80
+            path: /
+  tls:
+  - hosts:
+    - knowledgebase.test.k8s.mvp.kalavai.net
+    secretName: knowledgebase.test.k8s.mvp.kalavai.net-tls

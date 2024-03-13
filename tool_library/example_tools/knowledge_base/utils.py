@@ -3,6 +3,11 @@ from pathlib import Path
 import os
 import hashlib
 
+from langchain_community.document_loaders import (
+    PyPDFium2Loader,
+    TextLoader,
+    Docx2txtLoader
+)
 from langchain.retrievers import (
     ContextualCompressionRetriever,
     EnsembleRetriever,
@@ -43,7 +48,24 @@ def save_upload_file(upload_file, base_folder, username):
     finally:
         upload_file.file.close()
         return file_path, hash_file_name
+
+def load_documents_from_file(file_path):
+    """Load documents from a folder of specific extension"""
     
+    docs = []
+    extensions = {
+        ".txt": TextLoader,
+        ".pdf": PyPDFium2Loader,
+        ".docx": Docx2txtLoader
+    }
+    for extension, loader_cls in extensions.items():
+        if extension in file_path:
+            loader = loader_cls(file_path)
+            docs.extend(loader.load())
+
+    return docs
+
+
 def get_parent_text_splitter():
     return RecursiveCharacterTextSplitter(
         #separators=["\n\n", "\n", ". ", ""],

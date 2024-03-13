@@ -14,10 +14,9 @@ from utils import (
     save_upload_file,
     index_documents,
     load_document_retriever,
-    process_retriever_results
+    process_retriever_results,
+    load_documents_from_file
 )
-
-from langchain_community.document_loaders import PyPDFium2Loader
 
 
 # Configure logging at the application's entry point
@@ -103,20 +102,21 @@ async def search_index(query: str, index_name: str, top_k: int, similarity_thres
 # Endpoint to add pdf files to the index
 @app.post("/add")
 async def upload_file(file: UploadFile = File(...), username: str = None, api_key: str = Depends(verify_api_key)):
+    """Accepts files of the following formats: .txt, .docx, .pdf"""
     # Do here your stuff with the file
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
     t = time.time()
-    docs = []
+
+
     file_path, file_name = save_upload_file(
         upload_file=file,
-        base_folder=DB_BASE_FOLDER,
+        base_folder=DB_BASE_FOLDER
         username=username
-        )
-    loader = PyPDFium2Loader(file_path)
-    docs.extend(loader.load())
+    )
+    documents = load_documents_from_file(file_path)
     
-    index_documents(docs=docs, index_name=username, base_folder=DB_BASE_FOLDER, embedder=embedder)   
+    index_documents(docs=documents, index_name=username, base_folder=DB_BASE_FOLDER, embedder=embedder)   
     print(f"TOTAL time: {time.time()-t:.2f} seconds") 
     
     return {"detail": "File added successfully", "filename": file_name, "url": f"/static/{file_name }"}

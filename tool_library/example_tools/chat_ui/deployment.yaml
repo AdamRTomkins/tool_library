@@ -25,7 +25,7 @@ spec:
         - containerPort: 8000
         env:
         - name: LLM_API_KEY
-          value: "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"
+          value: "..."
         - name: LLM_MODEL
           value: "gpt-3.5-turbo-0125"
         #- name: LLM_BASE_URL
@@ -33,7 +33,7 @@ spec:
         - name: CHAT_USE_AUTH
           value: "True"
         - name: ANVIL_UPLINK_KEY
-          value: "client_A2ZZVMV6LLHVCZ4XSMTOWTSH-ADMVMYW5OIRPH75P"
+          value: "..."
         command: ["/bin/sh", "-c"]
         args:
         - |

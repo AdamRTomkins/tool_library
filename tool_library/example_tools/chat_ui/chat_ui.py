@@ -107,6 +107,7 @@ class KnowledgeClient:
         return response.json()
 
 
+
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
     user = auth_user(username, password)
@@ -275,6 +276,57 @@ def forever_actions():
 
     return actions
 
+
+@cl.action_callback("index_files")
+async def on_action(action: cl.Action):
+
+    file = await cl.AskFileMessage(
+            content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"]}
+        ).send()
+
+
+    retriever = cl.user_session.get("retriever")
+    kb_client = retriever.kb_client
+    address = kb_client.base_url
+
+    files = [
+        open(f.path, "rb")
+        for f in file
+    ]
+
+    outputs = []
+
+    for file in files:
+        async with cl.Step(name="Test") as step:
+        # Step is sent as soon as the context manager is entered
+            step.input = f"Upfloading {f.name}"
+            res = kb_client.add_items(files=file)
+            step.output = res
+
+
+
+
+
+    elements = [
+                    cl.Text(name="Result", content=str(res.json()), display="inline", language="json"),
+                    cl.Pdf(name="pdf1", display="inline", url=address+res.json()["url"])
+    ]
+    await cl.Message(content=f"Uploaded Files", elements=elements).send()
+     
+
+def forever_actions():
+    # Generate your forever actions
+    actions = [
+        cl.Action(
+            name="index_files", 
+            label = f'Add New Files to the Chat',
+            description=f'Upload A new document',
+            collapsed=True,
+            value=""
+        ),
+    ]
+
+    return actions
 
 @cl.on_message
 async def on_message(message: cl.Message):

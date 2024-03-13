@@ -40,7 +40,6 @@ spec:
           apt-get update && apt-get install -y git
           pip install chainlit
           apt-get install -y gettext
-          ls
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library    
           cd tool_library

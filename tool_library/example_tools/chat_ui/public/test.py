@@ -1,5 +1,6 @@
 from PIL import Image
 
+
 def convert_png_to_favicon(png_file_path, output_path="favicon.ico"):
     """
     Convert a PNG image to a favicon.ico file.
@@ -23,7 +24,10 @@ def convert_png_to_favicon(png_file_path, output_path="favicon.ico"):
         icon_images.append(resized_image)
 
     # Save the icon image with multiple sizes
-    icon_images[0].save(output_path, format='ICO', sizes=[(s.width, s.height) for s in icon_images])
+    icon_images[0].save(
+        output_path, format="ICO", sizes=[(s.width, s.height) for s in icon_images]
+    )
+
 
 # Example usage
-convert_png_to_favicon('logo.png')
+convert_png_to_favicon("logo.png")

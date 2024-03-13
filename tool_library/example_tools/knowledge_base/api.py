@@ -3,6 +3,7 @@ from fastapi import UploadFile, File
 
 from fastapi import FastAPI, HTTPException, Depends
 from starlette.requests import Request
+from fastapi.staticfiles import StaticFiles
 
 import time
 import os
@@ -27,15 +28,17 @@ logger = logging.getLogger(__name__)
 USE_AUTH = not os.getenv("KB_USE_AUTH", "True").lower() in ("false", "0", "f", "no")
 MASTER_KEY = os.getenv("KB_MASTER_KEY")
 DB_BASE_FOLDER = os.getenv("DB_BASE_FOLDER", "./data")
-EMBEDDING_API_URL = os.getenv("EMBEDDING_API_URL", "http://127.0.0.1:8080") #"https://embedding.test.k8s.mvp.kalavai.net")
+EMBEDDING_API_URL = os.getenv("EMBEDDING_API_URL", "https://api.openai.com/v1/embeddings") #"https://embedding.test.k8s.mvp.kalavai.net")
 EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "None")
 EMBEDDING_MODEL_ID = os.getenv("EMBEDDING_MODEL_ID", "text-embedding-3-small") #"BAAI/bge-large-en-v1.5")
 
-
 if USE_AUTH:
-    assert MASTER_KEY is not None, "If you are using auth, you must set a master key using the 'RAG_MASTER_KEY' environment variable."
+    assert MASTER_KEY is not None, "If you are using auth, you must set a master key using the 'KB_MASTER_KEY' environment variable."
 else:
     logger.warning("Warning: Authentication is disabled. This should only be used for testing.")
+
+# check if the base folder exists, if not create it
+os.makedirs(DB_BASE_FOLDER, exist_ok=True)
 
 # API Key Management (Consider using a more secure approach for production)
 VALID_API_KEYS = {MASTER_KEY}
@@ -47,8 +50,12 @@ tags_metadata = [
     },
 ]
 
+
 # FastAPI instance
 app = FastAPI(openapi_tags=tags_metadata)
+
+# Mount the static directory to be served by FastAPI
+app.mount("/static", StaticFiles(directory=DB_BASE_FOLDER), name="static")
 
 embedder = EmbeddingConfig(
     api_url=EMBEDDING_API_URL,
@@ -100,15 +107,19 @@ async def upload_file(file: UploadFile = File(...), username: str = None, api_ke
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
     t = time.time()
-    file_path = save_upload_file(
+
+
+    file_path, file_name = save_upload_file(
         upload_file=file,
-        base_folder=DB_BASE_FOLDER)
+        base_folder=DB_BASE_FOLDER
+        username=username
+    )
     documents = load_documents_from_file(file_path)
     
     index_documents(docs=documents, index_name=username, base_folder=DB_BASE_FOLDER, embedder=embedder)   
     print(f"TOTAL time: {time.time()-t:.2f} seconds") 
     
-    return {"detail": "File added successfully"}
+    return {"detail": "File added successfully", "filename": file_name, "url": f"/static/{file_name }"}
 
 
 if __name__ == "__main__":

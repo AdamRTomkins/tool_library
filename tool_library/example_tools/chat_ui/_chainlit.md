@@ -1,7 +1,5 @@
 # Kalavai Personal Document AI Assistant!
 
-This has been Set Up By: ${USERNAME}
-
 ## Configuration Overview
 
 The Kalavai Personal Document AI Assistant is configured with the following settings:
@@ -9,11 +7,9 @@ The Kalavai Personal Document AI Assistant is configured with the following sett
 - **LLM API Key**: `${LLM_API_KEY}`
 - **LLM Model**: `${LLM_MODEL}`
 - **LLM Base URL**: `${LLM_BASE_URL}`
-- **Retriever Base URL**: `${RETRIEVER_BASE_URL}`
-- **Retriever API Key**: `${RETRIEVER_API_KEY}`
-- **Chat Use Auth**: `${CHAT_USE_AUTH}`
-- **Chat Master Key**: `${CHAT_MASTER_KEY}`
 - **Anvil Webapp for auth**: `${ANVIL_UPLINK_KEY}`
+- **Default Namespace for Search**: `${DEFAULT_NAMESPACE}`
+- **Knowledge Base**: `${OVERRIDE_KNOWLEDGE_BASE_URL}`
 
 ## Introduction
 
@@ -40,3 +36,12 @@ For any queries or support, refer to the official documentation or contact our s
 ---
 
 Kalavai - Empowering your productivity through AI.
+
+# DEV TODO:
+1. Link and show pdfs from a search
+2. Update to using a form of referenced search
+3. Allow users to see the original file names of uploaded documents instead of the hash.
+
+## recent feature updates:
+1. Allow users to toggle of personal and centalised search (`${DEFAULT_NAMESPACE}`) in the settings.
+2. Allow file upload through button or normal drag and drop.

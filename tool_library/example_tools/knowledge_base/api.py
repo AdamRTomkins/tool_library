@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, Form
 
 from fastapi import FastAPI, HTTPException, Depends
 from starlette.requests import Request
@@ -101,17 +101,18 @@ async def search_index(query: str, index_name: str, top_k: int, similarity_thres
 
 # Endpoint to add pdf files to the index
 @app.post("/add")
-async def upload_file(file: UploadFile = File(...), username: str = None, api_key: str = Depends(verify_api_key)):
+async def upload_file(file: UploadFile = File(...), username: str = Form(None), api_key: str = Depends(verify_api_key)):
     """Accepts files of the following formats: .txt, .docx, .pdf"""
-    # Do here your stuff with the file
     if not file:
         raise HTTPException(status_code=400, detail="File is required")
     t = time.time()
 
 
+    print("USERNAME", username)
+
     file_path, file_name = save_upload_file(
         upload_file=file,
-        base_folder=DB_BASE_FOLDER
+        base_folder=DB_BASE_FOLDER,
         username=username
     )
     documents = load_documents_from_file(file_path)
@@ -119,7 +120,7 @@ async def upload_file(file: UploadFile = File(...), username: str = None, api_ke
     index_documents(docs=documents, index_name=username, base_folder=DB_BASE_FOLDER, embedder=embedder)   
     print(f"TOTAL time: {time.time()-t:.2f} seconds") 
     
-    return {"detail": "File added successfully", "filename": file_name, "url": f"/static/{file_name }"}
+    return {"detail": "File added successfully", "filename": file_name, "url": f"/static/{file_name }", "username":username, "original_filename":file.filename}
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 import os
+import hashlib
 
 from langchain_community.document_loaders import (
     PyPDFium2Loader,
@@ -27,15 +28,26 @@ OVERLAP_LENGTH = 0
 SEARCH_TYPE = "mmr"
 
 
-def save_upload_file(upload_file, base_folder):
-    file_path = os.path.join(base_folder, upload_file.filename)
+def save_upload_file(upload_file, base_folder, username):
+
+    os.makedirs(base_folder, exist_ok=True)
+
+    file_name = username+"_"+upload_file.filename
+    m = hashlib.sha256()
+    m.update(file_name.encode('utf-8'))
+
+    #hacky file name hashing with extension
+    hash_file_name = m.hexdigest()+ "."+file_name.split(".")[-1]
+
+    file_path = os.path.join(base_folder, hash_file_name)
+
     destination = Path(file_path)
     try:
         with destination.open("wb") as buffer:
             shutil.copyfileobj(upload_file.file, buffer)
     finally:
         upload_file.file.close()
-        return file_path
+        return file_path, hash_file_name
 
 def load_documents_from_file(file_path):
     """Load documents from a folder of specific extension"""

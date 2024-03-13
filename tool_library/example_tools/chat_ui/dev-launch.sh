@@ -3,9 +3,9 @@
 #export LLM_API_KEY="sk-..."
 #export LLM_MODEL="gpt-3.5-turbo"
 
-export LLM_API_KEY="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"
+export LLM_API_KEY="..."
 export LLM_MODEL="gpt-3.5-turbo-0125"
-export ANVIL_UPLINK_KEY="client_A2ZZVMV6LLHVCZ4XSMTOWTSH-ADMVMYW5OIRPH75P"
+export ANVIL_UPLINK_KEY="..."
 #export LLM_BASE_URL="http://178.62.13.8:31095"
 
 

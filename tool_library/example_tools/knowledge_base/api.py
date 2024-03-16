@@ -13,6 +13,7 @@ from models import EmbeddingConfig
 from utils import (
     save_upload_file,
     index_documents,
+    load_embedding,
     load_document_retriever,
     process_retriever_results,
     load_documents_from_file
@@ -57,10 +58,12 @@ app = FastAPI(openapi_tags=tags_metadata)
 # Mount the static directory to be served by FastAPI
 app.mount("/static", StaticFiles(directory=DB_BASE_FOLDER), name="static")
 
-embedder = EmbeddingConfig(
-    api_url=EMBEDDING_API_URL,
-    api_key=EMBEDDING_API_KEY,
-    embedding_id=EMBEDDING_MODEL_ID
+embedding = load_embedding(
+    embedder_config=EmbeddingConfig(
+        api_url=EMBEDDING_API_URL,
+        api_key=EMBEDDING_API_KEY,
+        embedding_id=EMBEDDING_MODEL_ID
+    )
 )
 
 
@@ -90,12 +93,15 @@ async def search_index(query: str, index_name: str, top_k: int, similarity_thres
         raise HTTPException(status_code=400, detail="Top_k and similarity_thresholds are required")
     retriever = load_document_retriever(
         index_name=index_name,
-        embedder=embedder,
+        embedding=embedding,
         top_k=top_k,
         similarity_threshold=similarity_threshold,
         base_path=DB_BASE_FOLDER)
+    import time
+    t = time.time()
     results = retriever.invoke(query)
-
+    print(f"Search time: {time.time()-t:.2f}")
+    
     return process_retriever_results(results)
 
 
@@ -117,7 +123,7 @@ async def upload_file(file: UploadFile = File(...), username: str = Form(None), 
     )
     documents = load_documents_from_file(file_path)
     
-    index_documents(docs=documents, index_name=username, base_folder=DB_BASE_FOLDER, embedder=embedder)   
+    index_documents(docs=documents, index_name=username, base_folder=DB_BASE_FOLDER, embedding=embedding)   
     print(f"TOTAL time: {time.time()-t:.2f} seconds") 
     
     return {"detail": "File added successfully", "filename": file_name, "url": f"/static/{file_name }", "username":username, "original_filename":file.filename}

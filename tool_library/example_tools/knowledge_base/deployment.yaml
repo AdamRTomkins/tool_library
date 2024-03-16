@@ -16,7 +16,7 @@ spec:
       runtimeClassName: nvidia
       #nodeName: carlosfm-desktop-1
       nodeSelector:
-        use-gpu: true
+        use-gpu: "true"
       containers:
       - name: knowledge-base-container
         image: python:3.8-slim

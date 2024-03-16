@@ -33,7 +33,7 @@ spec:
         #- name: EMBEDDING_API_URL
         #  value: "http://127.0.0.1:8080"
         - name: EMBEDDING_API_KEY
-          value: "
+          value: ""
         - name: EMBEDDING_MODEL_ID
           value: "BAAI/bge-large-en-v1.5" #"text-embedding-3-small"
         command: ["/bin/sh", "-c"]

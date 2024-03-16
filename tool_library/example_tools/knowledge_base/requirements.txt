@@ -1,8 +1,11 @@
+# server
 fastapi
-langchain
 uvicorn
+# langchain
+langchain
 python-multipart
 pypdfium2
 chromadb
-langchain-openai
+langchain-openai # for openAI embeddings
 docx2txt
+sentence-transformers # for local embeddings

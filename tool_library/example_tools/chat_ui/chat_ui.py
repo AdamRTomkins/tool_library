@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
-DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "carlosfm")
+DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "cjbs")
 
 # Temporary Override Functions
 OVERRIDE_KNOWLEDGE_BASE_URL = os.environ["OVERRIDE_KNOWLEDGE_BASE_URL"]
@@ -125,6 +125,7 @@ def auth_callback(username: str, password: str):
                 "api_key": api_key,
                 "knowledge_base_url": knowledge_base_url,
                 "knowledge_base_api": knowledge_base_api,
+                "namespace": user["username"]
             },
         )
     else:
@@ -251,16 +252,6 @@ async def index_files(file_objects):
     await cl.Message(content=response, elements=elements).send()
 
 
-@cl.action_callback("index_files")
-async def on_action(action: cl.Action):
-
-    file = await cl.AskFileMessage(
-        content="Please upload a File to begin.", accept={"application/pdf": [".pdf"]}
-    ).send()
-
-    await index_files(file)
-
-
 def forever_actions():
     # Generate your forever actions
     actions = [
@@ -310,21 +301,7 @@ async def on_action(action: cl.Action):
                         cl.Pdf(name="pdf1", display="inline", url=address+res.json()["url"])
         ])
     await cl.Message(content=f"Uploaded Files", elements=elements).send()
-     
 
-def forever_actions():
-    # Generate your forever actions
-    actions = [
-        cl.Action(
-            name="index_files", 
-            label = f'Add New Files to the Chat',
-            description=f'Upload A new document',
-            collapsed=True,
-            value=""
-        ),
-    ]
-
-    return actions
 
 @cl.on_message
 async def on_message(message: cl.Message):

@@ -43,7 +43,6 @@ spec:
           apt-get install -y gettext
           git clone https://github.com/kalavai-net/tool_library.git /app/tool_library
           cd /app/tool_library
-          git checkout feature/mvp
           cd tool_library
           cd example_tools
           cd knowledge_base

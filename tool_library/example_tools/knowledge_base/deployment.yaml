@@ -13,6 +13,10 @@ spec:
       labels:
         app: knowledge-base-app
     spec:
+      runtimeClassName: nvidia
+      #nodeName: carlosfm-desktop-1
+      nodeSelector:
+        use-gpu: "true"
       containers:
       - name: knowledge-base-container
         image: python:3.8-slim
@@ -21,17 +25,17 @@ spec:
         - containerPort: 8000
         env:
         - name: KB_USE_AUTH
-          value: "True"
+          value: "False"
         - name: KB_MASTER_KEY
           value: "CARLOS_ANNIE_ADAM_KALAVAI"
         - name: DB_BASE_FOLDER
           value: "/kb_data"
-        - name: EMBEDDING_API_URL
-          value: "http://127.0.0.1:8080"
+        #- name: EMBEDDING_API_URL
+        #  value: "http://127.0.0.1:8080"
         - name: EMBEDDING_API_KEY
           value: ""
         - name: EMBEDDING_MODEL_ID
-          value: "text-embedding-3-small"
+          value: "BAAI/bge-large-en-v1.5" #"text-embedding-3-small"
         command: ["/bin/sh", "-c"]
         args:
         - |
@@ -46,11 +50,13 @@ spec:
           uvicorn api:app --host 0.0.0.0 --port 8000
         resources:
           limits:
+            cpu: 4
+            memory: "4Gi"
+            nvidia.com/gpu: 1
+          requests:
             cpu: 2
             memory: "4Gi"
-          requests:
-            cpu: 2 
-            memory: "4Gi"
+            nvidia.com/gpu: 1
         volumeMounts:
         - name: knowledge-base-storage
           mountPath: "/kb_data"

@@ -18,6 +18,7 @@ from langchain.storage import LocalFileStore
 from langchain_community.vectorstores import Chroma
 from langchain.storage._lc_store import create_kv_docstore
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
@@ -87,22 +88,27 @@ def get_chunk_text_splitter():
         is_separator_regex=False,
     )
 
-def load_embedding(embedder):
+def load_embedding(embedder_config):
     # embedding = HuggingFaceInferenceAPIEmbeddings(
-    #     api_url=embedder.api_url,
-    #     api_key=embedder.api_key,
-    #     embedding_id=embedder.embedding_id
+    #     api_url=embedder_config.api_url,
+    #     api_key=embedder_config.api_key,
+    #     embedding_id=embedder_config.embedding_id
     # )
+    embedding = HuggingFaceEmbeddings(
+        model_name=embedder_config.embedding_id,
+        model_kwargs={"device": "cuda"}
+    )
 
-    embedding = OpenAIEmbeddings(
-        model=embedder.embedding_id, 
-        dimensions=1024,
-        openai_api_key=embedder.api_key)
+    # embedding = OpenAIEmbeddings(
+    #     model=embedder_config.embedding_id, 
+    #     dimensions=1024,
+    #     openai_api_key=embedder_config.api_key)
     return embedding
 
 
-def load_document_retriever(index_name, embedder, top_k=10, similarity_threshold=0.5, docs=None, base_path="."):
-    embedding = load_embedding(embedder)
+def load_document_retriever(index_name, embedding, top_k=10, similarity_threshold=0.5, docs=None, base_path="."):
+    import time
+    t = time.time()
     doc_store = create_kv_docstore(LocalFileStore(f"{base_path}/doc_store/{index_name}"))
     vector_store = Chroma(index_name, embedding, persist_directory=f"{base_path}/vector_store/{index_name}")
 
@@ -119,25 +125,25 @@ def load_document_retriever(index_name, embedder, top_k=10, similarity_threshold
     )
     if docs is not None:
         retriever.add_documents(docs)
-    
 
     embeddings_filter = EmbeddingsFilter(embeddings=embedding, similarity_threshold=similarity_threshold)
-    compression_retriever = ContextualCompressionRetriever(
+    final_retriever = ContextualCompressionRetriever(
         base_compressor=embeddings_filter, base_retriever=retriever
     )
+    print(f"-----Embeddings loaded: {time.time()-t:.2f}")
     
-    ensemble_retriever = EnsembleRetriever(
-        retrievers=[compression_retriever], weights=[0.5]
-    )
+    # final_retriever = EnsembleRetriever(
+    #     retrievers=[final_retriever], weights=[0.5]
+    # )
     
-    return ensemble_retriever
+    return final_retriever
 
 
-def index_documents(docs, index_name, base_folder, embedder):
+def index_documents(docs, index_name, base_folder, embedding):
 
     retriever = load_document_retriever(
         index_name=index_name,
-        embedder=embedder,
+        embedding=embedding,
         docs=docs,
         base_path=base_folder
     )

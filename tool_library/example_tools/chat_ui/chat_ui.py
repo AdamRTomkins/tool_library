@@ -49,8 +49,8 @@ class KnowledgeClient:
             params={
                 "query": query,
                 "index_name": namespace,
-                "top_k": 5,
-                "similarity_threshold": 0.5,
+                "top_k": 10,
+                "similarity_threshold": 0.3,
             },
             headers=self.headers,
         )
@@ -114,8 +114,8 @@ def auth_callback(username: str, password: str):
     if user is not None:
         api_key = user["api_key"]
 
-        knowledge_base_url = user["knowledge_base_url"]
-        knowledge_base_api = user["api_key"]
+        #knowledge_base_url = user["knowledge_base_url"]
+        #knowledge_base_api = user["api_key"]
 
         return cl.User(
             identifier=username,
@@ -123,8 +123,8 @@ def auth_callback(username: str, password: str):
                 "role": "user",
                 "provider": "credentials",
                 "api_key": api_key,
-                "knowledge_base_url": knowledge_base_url,
-                "knowledge_base_api": knowledge_base_api,
+                #"knowledge_base_url": knowledge_base_url,
+                #"knowledge_base_api": knowledge_base_api,
                 "namespace": user["username"]
             },
         )
@@ -191,8 +191,8 @@ async def on_chat_start():
     knowledge_base_url = (
         cl.user_session.get("user").metadata.get("knowledge_base_url"),
     )
-    knowledge_base_api_key = cl.user_session.get("user").metadata.get(
-        "knowledge_base_api"
+    api_key = cl.user_session.get("user").metadata.get(
+        "api_key"
     )
 
     #######################################
@@ -207,7 +207,7 @@ async def on_chat_start():
         knowledge_base_url = OVERRIDE_KNOWLEDGE_BASE_URL
 
     client = KnowledgeClient(
-        base_url=knowledge_base_url, api_key=knowledge_base_api_key
+        base_url=knowledge_base_url, api_key=api_key
     )
 
     cl.user_session.set("client", client)

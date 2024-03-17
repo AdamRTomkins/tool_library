@@ -1,9 +1,19 @@
 import logging
+import time
 import os
 
 from chainlit.input_widget import Switch
 
 from auth import auth_user
+from chat_utils import (
+    StreamHandler,
+    typed_answer,
+    format_docs,
+    create_rag_chain,
+    load_llm,
+    KnowledgeClient
+)
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -34,77 +44,6 @@ import requests
 from chainlit.input_widget import *
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.chat_models import ChatOpenAI
-
-
-# Move these too a specific REPO for the RAG when we have it
-class KnowledgeClient:
-    def __init__(self, base_url: str, api_key: str):
-        self.base_url = base_url
-        self.api_key = api_key
-        self.headers = {"X-API-KEY": self.api_key, "accept": "application/json"}
-
-    def search(self, query: str, namespace: str) -> List[Dict[str, Any]]:
-        response = requests.get(
-            f"{self.base_url}/search/",
-            params={
-                "query": query,
-                "index_name": namespace,
-                "top_k": 10,
-                "similarity_threshold": 0.3,
-            },
-            headers=self.headers,
-        )
-        response.raise_for_status()
-        return response.json()
-
-    def add_items(self, username: str, files: List) -> Dict[str, Any]:
-        # Validate input
-        if not isinstance(files, list):
-            files = [files]
-
-        # Prepare files for multipart/form-data
-        # Map file extensions to MIME types
-        mime_types = {
-            "pdf": "application/pdf",
-            "txt": "text/plain",
-            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        }
-
-        # Prepare files for multipart/form-data
-        multipart_files = [
-            (
-                "file",
-                (
-                    f.name,
-                    f,
-                    mime_types.get(
-                        f.name.rsplit(".", 1)[-1], "application/octet-stream"
-                    ),
-                ),
-            )
-            for f in files
-            if f.name.rsplit(".", 1)[-1] in mime_types
-        ]
-
-        data = {"username": username}
-        response = requests.post(
-            f"{self.base_url}/add",
-            files=multipart_files,
-            data=data,
-            headers=self.headers,
-        )
-
-        # Close the file objects
-        for f in files:
-            f.close()
-
-        # Return the response
-        return response.json()  # Assuming the response is in JSON format
-
-    def index_info(self) -> Dict[str, Any]:
-        response = requests.get(f"{self.base_url}/info/", headers=self.headers)
-        response.raise_for_status()
-        return response.json()
 
 
 @cl.password_auth_callback
@@ -168,25 +107,10 @@ async def on_chat_start():
         ]
     ).send()
 
-    print("Namespaces", namespaces)
-
     # cl.user_session.set("kb_client", kb_client)
 
-    template = """Answer the question based only on the following context:
-    
-    {context}
-
-    Question: {question}
-    """
-
-    prompt = ChatPromptTemplate.from_template(template)
-
-    if LLM_BASE_URL:
-        llm = ChatOpenAI(base_url=LLM_BASE_URL, model=LLM_MODEL)
-    else:
-        llm = ChatOpenAI(model=LLM_MODEL)
-
-    print(cl.user_session.get("user").metadata)
+    llm = load_llm(openai_api_key=LLM_API_KEY, openai_model=LLM_MODEL, openai_base_url=LLM_BASE_URL)
+    chain = create_rag_chain(llm)
 
     knowledge_base_url = (
         cl.user_session.get("user").metadata.get("knowledge_base_url"),
@@ -211,8 +135,7 @@ async def on_chat_start():
     )
 
     cl.user_session.set("client", client)
-    cl.user_session.set("prompt", prompt)
-    cl.user_session.set("llm", llm)
+    cl.user_session.set("chain", chain)
 
 
 async def index_files(file_objects):
@@ -313,94 +236,65 @@ async def on_message(message: cl.Message):
 
     # Pull the session vars
     client = cl.user_session.get("client")
-    prompt = cl.user_session.get("prompt")
-    llm = cl.user_session.get("llm")
+    chain = cl.user_session.get("chain")
     search_namespace = cl.user_session.get("search_namespaces")[0]
-
-    msg = cl.Message(content="")
-    await msg.send()
-
-    search_results = []
-
-    # Search The Rag Instance
-    with cl.Step(name="Search") as parent_step:
-        parent_step.input = f" search {message.content} in {search_namespace} knowledge bases"
-
-        with cl.Step(
-            name=f'Search {search_namespace} Knowledge Base'
-        ) as individual_search:
-            individual_search.input = message.content
-            try:
-                context = client.search(message.content, namespace=search_namespace)
-                for c in context:
-                    c["source"] = search_namespace
-                search_results.extend(context)
-                individual_search.output = context
-
-                elements = [
-                    cl.Text(
-                        name="Result",
-                        content=str(p["page_content"]),
-                        display="inline",
-                    )
-                    for p in context
-                ]
-
-                element_names = "Relavent Documents: \n " + "\n".join(
-                    [
-                        f'{p["metadata"]["source"]} page {p["metadata"]["page"]}'
-                        for p in context
-                    ]
-                )
-                individual_search.output = element_names
-
-            except Exception as e:
-                individual_search.output = f"{search_namespace}: {str(e)}"
-                return
-
-        # sort search_results by the similarity score in x["state"]["query"]["similarity_score"]
-        search_results = sorted(
-            search_results,
-            key=lambda x: x["state"]["query_similarity_score"],
-            reverse=True,
-        )
-
-        elements = [
-            cl.Text(name="Result", content=str(p["page_content"]), display="side")
-            for p in search_results
+    
+    
+    callbacks = [
+            cl.AsyncLangchainCallbackHandler(),
+            StreamHandler()
         ]
+        
+    t = time.time()
+    try:
+        context = client.search(message.content, namespace=search_namespace)
+        context_str = format_docs(context)
+        generated_message = await chain.ainvoke({"question": message.content, "context": context_str}, {"callbacks": callbacks})
+        res = {"answer": generated_message, "context": context}
+    except Exception as e:
+        res = {"answer": "", "context": []}
+        print(str(e))
 
-        element_names = "Relavent Documents: \n " + "\n".join(
-            [f'{p["metadata"]["source"]} page {p["metadata"]["page"]}' for p in context]
-        )
+    await typed_answer(res["answer"])
+    
+    answer = ""#res["answer"]
+    source_documents = res["context"]
 
-        # parent_step.elements = elements
-        parent_step.output = element_names
+    text_elements = []  # type: List[cl.Text]
 
-        if len(context) == 0:
-            # This checks if we have found any context in the retrieval
-            msg.content = "No context found"
-            await msg.update()
-            return
+    if source_documents:
+        for source_idx, source_doc in enumerate(source_documents):
+            source = source_doc["metadata"]["source"]
+            score = source_doc["state"]["query_similarity_score"] * 100
+            # Create the text element referenced in the message
+            # TODO: needs to link to original file on the server side
+            if "page" in source_doc["metadata"]:
+                    source_page = source_doc["metadata"]["page"] + 1 # 0 index
+                    source_name = f"[{score:.0f}%] {source} (page {source_page})"
+            else:
+                source_name = f"[{score:.0f}%] {source}"
+                
+            if True or ".pdf" not in source.lower():
+                element = cl.Text(content=source_doc["page_content"], name=source_name)    
+            else:
+                element = cl.Pdf(
+                    name=source_name,
+                    display="page", # inline side page
+                    path=source,
+                    page=source_page
+                )
+            text_elements.append(element)
+        source_names = [text_el.name for text_el in text_elements]
 
-        context_str = "\n".join([p["page_content"] for p in context])
+        if source_names:
+            source_names = "\n".join(source_names)
+            answer += f"\n\nSources: \n{source_names}"
+        else:
+            answer += "\nNo sources found"
 
-        # Limit the context in tesgint:
-        context_str = context_str[:1000]
-        msg.content = element_names
-        msg.elements = elements
+    # answer = await chain.ainvoke(message.content, {"callbacks": callbacks})
+    
+    response = f"{answer}\n[{time.time()-t:.2f} seconds]"
+    
+    await cl.Message(content=response, elements=text_elements).send()
 
-        await msg.update()
-
-    messages = prompt.format_messages(context=context_str, question=message.content)
-
-    with cl.Step(name="Generate") as step:
-        step.input = message.content
-        reply = await llm.ainvoke(messages)
-        step.output = reply.content
-        msg.content = reply.content
-        await msg.update()
-
-    msg.actions = forever_actions()
-    await msg.update()
-    await msg.send()

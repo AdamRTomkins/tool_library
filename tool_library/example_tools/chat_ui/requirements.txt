@@ -5,3 +5,4 @@ uvicorn
 langchain
 anvil-app-server
 anvil-uplink
+langchain-openai

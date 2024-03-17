@@ -153,7 +153,7 @@ async def on_chat_start():
         )
         namespace = cl.user_session.get("user").identifier.split("@")[0]
 
-    namespaces = [DEFAULT_NAMESPACE, namespace]
+    namespaces = [namespace] #[DEFAULT_NAMESPACE, namespace]
     cl.user_session.set("namespace", namespace)
     cl.user_session.set("search_namespaces", namespaces)
 
@@ -305,12 +305,6 @@ async def on_action(action: cl.Action):
 
 @cl.on_message
 async def on_message(message: cl.Message):
-        
-    # Pull the session vars
-    client = cl.user_session.get("client")
-    prompt = cl.user_session.get("prompt")
-    namespace = cl.user_session.get("namespace")
-    llm = cl.user_session.get("llm")
 
     files = [f for f in message.elements if type(f) == cl.File]
 
@@ -320,11 +314,8 @@ async def on_message(message: cl.Message):
     # Pull the session vars
     client = cl.user_session.get("client")
     prompt = cl.user_session.get("prompt")
-    namespace = cl.user_session.get("namespace")
     llm = cl.user_session.get("llm")
-    search_namespaces = cl.user_session.get("search_namespaces")
-
-    print(search_namespaces)
+    search_namespace = cl.user_session.get("search_namespaces")[0]
 
     msg = cl.Message(content="")
     await msg.send()
@@ -333,40 +324,39 @@ async def on_message(message: cl.Message):
 
     # Search The Rag Instance
     with cl.Step(name="Search") as parent_step:
-        parent_step.input = f" search {message.content} in {','.join(search_namespaces)} knowledge bases"
+        parent_step.input = f" search {message.content} in {search_namespace} knowledge bases"
 
-        for namespace in search_namespaces:
-            with cl.Step(
-                name=f'Search {namespace.replace("_", " ".title())} Knowledge Base'
-            ) as individual_search:
-                individual_search.input = message.content
-                try:
-                    context = client.search(message.content, namespace=namespace)
-                    for c in context:
-                        c["source"] = namespace
-                    search_results.extend(context)
-                    individual_search.output = context
+        with cl.Step(
+            name=f'Search {search_namespace} Knowledge Base'
+        ) as individual_search:
+            individual_search.input = message.content
+            try:
+                context = client.search(message.content, namespace=search_namespace)
+                for c in context:
+                    c["source"] = search_namespace
+                search_results.extend(context)
+                individual_search.output = context
 
-                    elements = [
-                        cl.Text(
-                            name="Result",
-                            content=str(p["page_content"]),
-                            display="inline",
-                        )
+                elements = [
+                    cl.Text(
+                        name="Result",
+                        content=str(p["page_content"]),
+                        display="inline",
+                    )
+                    for p in context
+                ]
+
+                element_names = "Relavent Documents: \n " + "\n".join(
+                    [
+                        f'{p["metadata"]["source"]} page {p["metadata"]["page"]}'
                         for p in context
                     ]
+                )
+                individual_search.output = element_names
 
-                    element_names = "Relavent Documents: \n " + "\n".join(
-                        [
-                            f'{p["metadata"]["source"]} page {p["metadata"]["page"]}'
-                            for p in context
-                        ]
-                    )
-                    individual_search.output = element_names
-
-                except Exception as e:
-                    individual_search.output = f"{namespace}: {str(e)}"
-                    continue
+            except Exception as e:
+                individual_search.output = f"{search_namespace}: {str(e)}"
+                return
 
         # sort search_results by the similarity score in x["state"]["query"]["similarity_score"]
         search_results = sorted(
@@ -374,8 +364,6 @@ async def on_message(message: cl.Message):
             key=lambda x: x["state"]["query_similarity_score"],
             reverse=True,
         )
-        # limit to the top 5
-        search_results = search_results[:5]
 
         elements = [
             cl.Text(name="Result", content=str(p["page_content"]), display="side")

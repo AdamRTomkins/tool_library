@@ -1,47 +1,38 @@
-# Kalavai Personal Document AI Assistant!
+# Kalavai Personal AI Assistant
 
-## Configuration Overview
+Your very own A assistant to help you navigate documents. This is **not your typical, hyper-verbose LLM**. KalavAI Assistant is designed to speed up document navigation by allowing you to _talk to your documents_. It gives you a leg up to:
+- Unpack the details of a case study in seconds, not minutes
+- Get answers to mock exams based on the material covered in class
+- Clarify concepts and fight the fog of acronyms
 
-The Kalavai Personal Document AI Assistant is configured with the following settings:
-
-- **LLM API Key**: `${LLM_API_KEY}`
-- **LLM Model**: `${LLM_MODEL}`
-- **LLM Base URL**: `${LLM_BASE_URL}`
-- **Anvil Webapp for auth**: `${ANVIL_UPLINK_KEY}`
-- **Default Namespace for Search**: `${DEFAULT_NAMESPACE}`
-- **Knowledge Base**: `${OVERRIDE_KNOWLEDGE_BASE_URL}`
-
-## Introduction
-
-The Kalavai Document AI Assistant is designed to streamline your workflow by leveraging the latest advancements in AI and machine learning. This assistant is capable of performing a wide range of document-related tasks, including summarization, question answering, and information retrieval, all personalized to your specific needs.
 
 ## Getting Started
 
-To get started with your personal AI assistant, ensure all environmental variables are correctly set as per the configuration overview. These variables enable the assistant to connect to various services and perform its duties efficiently.
+Upload your documents using the chat box below and **ask anything**.
 
-## Features
 
-- **Document Summarization**: Quickly get the gist of lengthy documents.
-- **Question Answering**: Ask any question about your document, and get precise answers.
-- **Information Retrieval**: Find the information you need from your collection of documents instantly.
+## How it works?
 
-## Usage
+When you upload a document, Kalavai reads, ingests and stores it in its memory. When you ask questions, the Assistant refers back to the bank of documents you've previously provided and **forms its answer based only on relevant information**. This is a key different with services like ChatGPT or Claude 2. We won't make up facts. If your request cannot be answered with the documents available, we'll say so!   
 
-To use the Kalavai Document AI Assistant, you simply need to interact with it through your preferred interface. The assistant is designed to be intuitive and user-friendly, ensuring you can harness its full potential without a steep learning curve.
+
+## How to get the best of KalavAI?
+
+KalavAI uses a method called **RAG (Retriever Augmented Generation)**, which uses LLMs to write answers by first fetching relevant information from documents and use them in the LLM prompt. Thus, the best way to get answers is by making sure the question you are asking is good enough to match against the context that contains the answer. Simply put, use _google-like_ techniques in your input: include important keywords and contextualise the question. 
+
+Example of poor question:
+
+_"What are the pros and cons of the strategy in the case"_
+
+Example of good question:
+
+_"In the Swatch case, what are the pros and cons of the strategy applied?"_
+
 
 ## Support
 
-For any queries or support, refer to the official documentation or contact our support team. Your feedback is invaluable in helping us improve.
+For any queries, feedback or support, email us @ info@kalavai.net
 
 ---
 
 Kalavai - Empowering your productivity through AI.
-
-# DEV TODO:
-1. Link and show pdfs from a search
-2. Update to using a form of referenced search
-3. Allow users to see the original file names of uploaded documents instead of the hash.
-
-## recent feature updates:
-1. Allow users to toggle of personal and centalised search (`${DEFAULT_NAMESPACE}`) in the settings.
-2. Allow file upload through button or normal drag and drop.

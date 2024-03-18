@@ -168,7 +168,7 @@ async def index_files(file_objects):
                 ),
             ]
         )
-
+    
     response = "Uploaded Files \n" + "\n".join(
         [f"{res['filename']}" for res in outputs]
     )
@@ -190,39 +190,39 @@ def forever_actions():
     return actions
 
 
-@cl.action_callback("index_files")
-async def on_action(action: cl.Action):
+# @cl.action_callback("index_files")
+# async def on_action(action: cl.Action):
 
-    file = await cl.AskFileMessage(
-            content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"], "text/plain": [".txt", ".docx"]}
-        ).send()
+#     file = await cl.AskFileMessage(
+#             content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"], "text/plain": [".txt", ".docx"]}
+#         ).send()
 
-    retriever = cl.user_session.get("retriever")
-    kb_client = retriever.kb_client
-    address = kb_client.base_url
+#     retriever = cl.user_session.get("client")
+#     kb_client = retriever.kb_client
+#     address = kb_client.base_url
 
-    files = [
-        open(f.path, "rb")
-        for f in file
-    ]
+#     files = [
+#         open(f.path, "rb")
+#         for f in file
+#     ]
 
-    outputs = []
+#     outputs = []
 
-    for f in files:
-        async with cl.Step(name="Test") as step:
-        # Step is sent as soon as the context manager is entered
-            step.input = f"Uploading {f.name}"
-            res = kb_client.add_items(files=f)
-            step.output = res
-            outputs.append(res)
+#     for f in files:
+#         async with cl.Step(name="Test") as step:
+#         # Step is sent as soon as the context manager is entered
+#             step.input = f"Uploading {f.name}"
+#             res = kb_client.add_items(files=f)
+#             step.output = res
+#             outputs.append(res)
 
-    elements = []
-    for res in outputs:
-        elements.extend([
-                        cl.Text(name="Result", content=str(res.json()), display="inline", language="json"),
-                        cl.Pdf(name="pdf1", display="inline", url=address+res.json()["url"])
-        ])
-    await cl.Message(content=f"Uploaded Files", elements=elements).send()
+#     elements = []
+#     for res in outputs:
+#         elements.extend([
+#                         cl.Text(name="Result", content=str(res.json()), display="inline", language="json"),
+#                         cl.Pdf(name="pdf1", display="inline", url=address+res.json()["url"])
+#         ])
+#     await cl.Message(content=f"Uploaded Files", elements=elements).send()
 
 
 @cl.on_message
@@ -273,13 +273,14 @@ async def on_message(message: cl.Message):
             else:
                 source_name = f"[{score:.0f}%] {source}"
                 
-            if True or ".pdf" not in source.lower():
+            if ".pdf" not in source.lower():
                 element = cl.Text(content=source_doc["page_content"], name=source_name)    
             else:
                 element = cl.Pdf(
                     name=source_name,
                     display="page", # inline side page
-                    path=source,
+                    #path=source,
+                    url=client.base_url + source,
                     page=source_page
                 )
             text_elements.append(element)

@@ -29,7 +29,7 @@ spec:
         - name: KB_MASTER_KEY
           value: "CARLOS_ANNIE_ADAM_KALAVAI"
         - name: DB_BASE_FOLDER
-          value: "/kb_data"
+          value: "/static"
         #- name: EMBEDDING_API_URL
         #  value: "http://127.0.0.1:8080"
         - name: EMBEDDING_API_KEY
@@ -59,7 +59,7 @@ spec:
             nvidia.com/gpu: 1
         volumeMounts:
         - name: knowledge-base-storage
-          mountPath: "/kb_data"
+          mountPath: "/static"
       restartPolicy: Always
       volumes:
       - name: knowledge-base-storage

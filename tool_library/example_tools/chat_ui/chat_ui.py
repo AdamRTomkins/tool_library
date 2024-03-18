@@ -194,9 +194,8 @@ def forever_actions():
 async def on_action(action: cl.Action):
 
     file = await cl.AskFileMessage(
-            content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"]}
+            content="Please upload a PDF to begin!", accept={"application/pdf": [".pdf"], "text/plain": [".txt", ".docx"]}
         ).send()
-
 
     retriever = cl.user_session.get("retriever")
     kb_client = retriever.kb_client
@@ -209,11 +208,11 @@ async def on_action(action: cl.Action):
 
     outputs = []
 
-    for file in files:
+    for f in files:
         async with cl.Step(name="Test") as step:
         # Step is sent as soon as the context manager is entered
-            step.input = f"Upfloading {f.name}"
-            res = kb_client.add_items(files=file)
+            step.input = f"Uploading {f.name}"
+            res = kb_client.add_items(files=f)
             step.output = res
             outputs.append(res)
 

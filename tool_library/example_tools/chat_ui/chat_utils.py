@@ -33,7 +33,7 @@ class KnowledgeClient:
                 "query": query,
                 "index_name": namespace,
                 "top_k": 5,
-                "similarity_threshold": 0.35,
+                "similarity_threshold": 0.4,
             },
             headers=self.headers,
         )

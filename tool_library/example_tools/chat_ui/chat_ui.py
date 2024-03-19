@@ -23,6 +23,7 @@ LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
 DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "cjbs")
+NO_CONTEXT_MESSAGE = "I'm sorry, I don't know how to respond to that. I could not find any relevant information in the documents you've shared with me. Maybe try again, this time adding a bit more context about the problem or a few keywords."
 
 # Temporary Override Functions
 OVERRIDE_KNOWLEDGE_BASE_URL = os.environ["OVERRIDE_KNOWLEDGE_BASE_URL"]
@@ -59,6 +60,7 @@ def auth_callback(username: str, password: str):
         return cl.User(
             identifier=username,
             metadata={
+                "username": user["username"],
                 "role": "user",
                 "provider": "credentials",
                 "api_key": api_key,
@@ -245,14 +247,13 @@ async def on_message(message: cl.Message):
         ]
         
     t = time.time()
-    try:
-        context = client.search(message.content, namespace=search_namespace)
+    context = client.search(message.content, namespace=search_namespace)
+    if len(context) == 0:
+        res = {"answer": NO_CONTEXT_MESSAGE, "context": []}
+    else:
         context_str = format_docs(context)
         generated_message = await chain.ainvoke({"question": message.content, "context": context_str}, {"callbacks": callbacks})
         res = {"answer": generated_message, "context": context}
-    except Exception as e:
-        res = {"answer": "", "context": []}
-        print(str(e))
 
     await typed_answer(res["answer"])
     

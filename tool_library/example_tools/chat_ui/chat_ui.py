@@ -5,6 +5,7 @@ import os
 from chainlit.input_widget import Switch
 
 from auth import auth_user
+from user_status import get_user_status
 from chat_utils import (
     StreamHandler,
     typed_answer,
@@ -23,7 +24,7 @@ LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
 DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "cjbs")
-NO_CONTEXT_MESSAGE = "I'm sorry, I don't know how to respond to that. I could not find any relevant information in the documents you've shared with me. Maybe try again, this time adding a bit more context about the problem or a few keywords."
+NO_CONTEXT_MESSAGE = "I'm sorry, I don't know how to respond to that. I could not find any relevant information in the documents I have access too right now."
 
 # Temporary Override Functions
 OVERRIDE_KNOWLEDGE_BASE_URL = os.environ["OVERRIDE_KNOWLEDGE_BASE_URL"]
@@ -46,6 +47,36 @@ from chainlit.input_widget import *
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.chat_models import ChatOpenAI
 
+# Temporary Download Prompt
+# TODO: Add a download page!
+async def download_prompt(msg=None):
+    if msg is None:
+        msg = cl.Message(content="")
+        await msg.send()
+
+    content= """You have not yet registered with the Kalavai network.
+
+    Kalavai is a decentralised AI network, which allows any registared user to use the shared AI resources.
+
+    To register, please install the Kalavai application and follow the instructions to create an account.
+    
+    #TODO: Add a link to the download page
+    """
+
+    msg.content = content
+    await msg.update()
+
+async def upload_files(message, user_status):
+
+    files = [f for f in message.elements if type(f) == cl.File]
+
+    if files:
+        if user_status.registered:
+            await index_files(files)
+            await cl.Message(content="Files uploaded successfully").send()
+        else:
+            await download_prompt()
+            
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
@@ -54,9 +85,6 @@ def auth_callback(username: str, password: str):
     if user is not None:
         api_key = user["api_key"]
 
-        #knowledge_base_url = user["knowledge_base_url"]
-        #knowledge_base_api = user["api_key"]
-
         return cl.User(
             identifier=username,
             metadata={
@@ -64,8 +92,6 @@ def auth_callback(username: str, password: str):
                 "role": "user",
                 "provider": "credentials",
                 "api_key": api_key,
-                #"knowledge_base_url": knowledge_base_url,
-                #"knowledge_base_api": knowledge_base_api,
                 "namespace": user["username"]
             },
         )
@@ -88,26 +114,34 @@ async def on_chat_start():
 
     # get the namespace for this user:
     namespace = cl.user_session.get("user").metadata.get("namespace")
+    gated_namespace = cl.user_session.get("user").metadata.get("gated_namespaces",[])
+    public_namespace = cl.user_session.get("user").metadata.get("public_namespaces",[DEFAULT_NAMESPACE])
+
     if namespace is None:
         logger.warning(
             "No namespace found for user, defaulting to extracting from the identifier. This needs to be passed in from the login."
         )
         namespace = cl.user_session.get("user").identifier.split("@")[0]
 
-    namespaces = [namespace] #[DEFAULT_NAMESPACE, namespace]
-    cl.user_session.set("namespace", namespace)
-    cl.user_session.set("search_namespaces", namespaces)
+    search_namespaces = {
+        "open":public_namespace,
+        "gated":gated_namespace,
+        "private":[namespace] # This is your personal namespace
+    }
 
-    settings = await cl.ChatSettings(
-        [
-            Switch(
-                id=f"ns_{namespace}",
-                label=namespace.replace("_", " ").title(),
-                initial=True,
-            )
-            for namespace in namespaces
-        ]
-    ).send()
+    cl.user_session.set("namespace", namespace)
+    cl.user_session.set("search_namespaces", search_namespaces)
+
+    #settings = await cl.ChatSettings(
+    #    [
+    #        Switch(
+    #            id=f"ns_{namespace}",
+    #            label=namespace.replace("_", " ").title(),
+    #            initial=True,
+    #        )
+    #        for namespace in namespaces
+    #    ]
+    #).send()
 
     # cl.user_session.set("kb_client", kb_client)
 
@@ -174,6 +208,7 @@ async def index_files(file_objects):
     response = "Uploaded Files \n" + "\n".join(
         [f"{res['filename']}" for res in outputs]
     )
+
     await cl.Message(content=response, elements=elements).send()
 
 
@@ -227,19 +262,63 @@ def forever_actions():
 #     await cl.Message(content=f"Uploaded Files", elements=elements).send()
 
 
+async def format_sources(base_url, source_documents, answer= ""):
+    """ A Stand In functio that takes a list of sources and formats they for display in the chat"""
+    # This may not be the best way to display them.
+
+    if not source_documents:
+        return
+
+    text_elements = []
+
+    for source_idx, source_doc in enumerate(source_documents):
+        source = source_doc["metadata"]["source"]
+        
+        score = source_doc["state"]["query_similarity_score"] * 100
+
+        if "page" in source_doc["metadata"]:
+                source_page = source_doc["metadata"]["page"] + 1 # 0 index
+                source_name = f"[{score:.0f}%] {source} (page {source_page})"
+        else:
+            source_name = f"[{score:.0f}%] {source}"
+            
+        if ".pdf" not in source.lower():
+            element = cl.Text(content=source_doc["page_content"], name=source_name)    
+        else:
+            element = cl.Pdf(
+                name=source_name,
+                display="side", # inline side page
+                url=base_url + source,
+                page=source_page
+            )
+        text_elements.append(element)
+    source_names = [text_el.name for text_el in text_elements]
+
+    if source_names:
+        source_names = "\n ".join(source_names)
+        answer += f"\n\nSources: \n{source_names}"
+    else:
+        answer += "\nNo sources found"
+
+    await cl.Message(content=answer, elements=text_elements).send()
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
 
-    files = [f for f in message.elements if type(f) == cl.File]
-
-    if files:
-        await index_files(files)
+    msg = await cl.Message(content="").send()
 
     # Pull the session vars
     client = cl.user_session.get("client")
     chain = cl.user_session.get("chain")
-    search_namespace = cl.user_session.get("search_namespaces")[0]
-    
+    username = cl.user_session.get("namespace")
+    search_namespaces = cl.user_session.get("search_namespaces")
+
+    # get the user status
+    user_status = get_user_status(username)
+
+    # Deal with file uploads and verification
+    await upload_files(message, user_status)
     
     callbacks = [
             cl.AsyncLangchainCallbackHandler(),
@@ -247,7 +326,49 @@ async def on_message(message: cl.Message):
         ]
         
     t = time.time()
-    context = client.search(message.content, namespace=search_namespace)
+    # Search the knowledge base
+    # Todo Search Multiple Indexes
+
+    async def search_sources(search_namespaces, message):
+        results = {}
+        for domain, namespaces  in search_namespaces.items():
+            results[domain] = {}
+            for namespace in namespaces:
+                with cl.Step(name=f"Searching {domain.title()} Knowledge Base: {namespace}") as step:
+                    context = client.search(message, namespace=namespace)
+                    step.input = message
+                    step.output = context
+                    results[domain][namespace] = context
+
+        for domain in results:
+            results[domain] = sum(results[domain].values(),[])
+            results[domain] = sorted(results[domain], key=lambda x: x["state"]["query_similarity_score"], reverse=True)
+
+        return results
+    
+    results = await search_sources(search_namespaces, message.content)
+
+    open_context = results["open"]
+    gated_context = results["gated"]
+    private_context = results["private"]
+
+    context = open_context[:5]
+    curtailed_context = open_context[5:]
+
+    # Could we add some extra logic here to see if perhaps the "Best Match" is in the other gates/private sources?
+    # IE, we can say "The best documents to answer your question are gated/private, would you like to share your resources to access them?"
+
+    # Any user that is registared can access the gated context
+    # Update to user_status.currently_sharing for a more restrivtive model.
+    if user_status.registered:
+        context += gated_context
+        gated_context = []
+
+    # Only users currently sharing can access the private context
+    if user_status.currently_sharing:
+        context += private_context
+        private_context = []
+
     if len(context) == 0:
         res = {"answer": NO_CONTEXT_MESSAGE, "context": []}
     else:
@@ -255,47 +376,28 @@ async def on_message(message: cl.Message):
         generated_message = await chain.ainvoke({"question": message.content, "context": context_str}, {"callbacks": callbacks})
         res = {"answer": generated_message, "context": context}
 
-    await typed_answer(res["answer"])
-    
-    answer = ""#res["answer"]
-    source_documents = res["context"]
+    # Mention that there are more results
+    if len(curtailed_context) > 0:
+        res["answer"] += f"\n\nThere are {len(curtailed_context)} more results that could be relevant. Please refine your search to see more."
 
-    text_elements = []  # type: List[cl.Text]
+    # Mention that there are gated sources that could be relevant to your query
+    # and that they can gain access to these sources by registering
+    if len(gated_context) > 0 and not user_status.registered:
+        res["answer"] += f"\n\nThere are {len(gated_context)} gated sources that could be relevant to your query. Please register to gain access to these sources."
 
-    if source_documents:
-        for source_idx, source_doc in enumerate(source_documents):
-            source = source_doc["metadata"]["source"]
-            score = source_doc["state"]["query_similarity_score"] * 100
-            # Create the text element referenced in the message
-            # TODO: needs to link to original file on the server side
-            if "page" in source_doc["metadata"]:
-                    source_page = source_doc["metadata"]["page"] + 1 # 0 index
-                    source_name = f"[{score:.0f}%] {source} (page {source_page})"
-            else:
-                source_name = f"[{score:.0f}%] {source}"
-                
-            if ".pdf" not in source.lower():
-                element = cl.Text(content=source_doc["page_content"], name=source_name)    
-            else:
-                element = cl.Pdf(
-                    name=source_name,
-                    display="page", # inline side page
-                    #path=source,
-                    url=client.base_url + source,
-                    page=source_page
-                )
-            text_elements.append(element)
-        source_names = [text_el.name for text_el in text_elements]
+    # Mention that there are private sources that could be relevant to your query
+    # and that they can gain access to these sources by sharing their resoures on the kalavai network
+    if len(private_context) > 0 and not user_status.currently_sharing:
+        res["answer"] += f"\n\nThere are __{len(private_context)} of your private sources__ that could be relevant to your query. \n Please *share your resources* to gain access to these sources."
 
-        if source_names:
-            source_names = "\n".join(source_names)
-            answer += f"\n\nSources: \n{source_names}"
-        else:
-            answer += "\nNo sources found"
+    await typed_answer(
+        f"{res['answer']}\n[{time.time()-t:.2f} seconds]"
+    )
 
-    # answer = await chain.ainvoke(message.content, {"callbacks": callbacks})
-    
-    response = f"{answer}\n[{time.time()-t:.2f} seconds]"
-    
-    await cl.Message(content=response, elements=text_elements).send()
+    # Add a quick and dirtly formatting of each of the sources. 
+    await format_sources(client.base_url, open_context, answer="The following open sources could be relevant to your query:\n")
+    await format_sources(client.base_url, gated_context, answer="The following gated sources could be relevant to your query:\n")
+    await format_sources(client.base_url, private_context, answer="The following private sources could be relevant to your query:\n")
 
+    if gated_context or private_context:
+        await download_prompt()

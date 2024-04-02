@@ -113,7 +113,7 @@ async def setup_agent(settings):
 async def on_chat_start():
 
     # get the namespace for this user:
-    namespace = cl.user_session.get("user").metadata.get("namespace")
+    namespace = cl.user_session.get("user").metadata.get("namespace", None)
     gated_namespace = cl.user_session.get("user").metadata.get("gated_namespaces",[])
     public_namespace = cl.user_session.get("user").metadata.get("public_namespaces",[DEFAULT_NAMESPACE])
 
@@ -129,6 +129,7 @@ async def on_chat_start():
         "private":[namespace] # This is your personal namespace
     }
 
+    cl.user_session.set("username", cl.user_session.get("user").identifier)
     cl.user_session.set("namespace", namespace)
     cl.user_session.set("search_namespaces", search_namespaces)
 
@@ -311,11 +312,14 @@ async def on_message(message: cl.Message):
     # Pull the session vars
     client = cl.user_session.get("client")
     chain = cl.user_session.get("chain")
-    username = cl.user_session.get("namespace")
+    username = cl.user_session.get("username")
     search_namespaces = cl.user_session.get("search_namespaces")
 
     # get the user status
-    user_status = get_user_status(username)
+    with cl.Step(name=f"Checking User Status") as step:
+        user_status = get_user_status(username)
+        step.input = username
+        step.output = user_status
 
     # Deal with file uploads and verification
     await upload_files(message, user_status)

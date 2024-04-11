@@ -4,10 +4,11 @@ import time
 import requests
 from pydantic import BaseModel
 
-USER_PING_API_KEY = os.getenv("USER_PING_API_KEY")
+PLATFORM_BACKEND_API_KEY = os.getenv("PLATFORM_BACKEND_API_KEY")
+PLATFORM_BACKEND_ENDPOINT = os.getenv("PLATFORM_BACKEND_ENDPOINT", "https://platform.backend.test.k8s.mvp.kalavai.net")
 
-if not USER_PING_API_KEY:
-    raise ValueError("USER_PING_API_KEY environment variable is not set")
+if not PLATFORM_BACKEND_API_KEY or not PLATFORM_BACKEND_ENDPOINT:
+    raise ValueError("PLATFORM_BACKEND_API_KEY or PLATFORM_BACKEND_ENDPOINT environment variable is not set")
 
 class UserStatus(BaseModel):
     username: str
@@ -20,11 +21,11 @@ class UserStatus(BaseModel):
 def get_user_status(username):
     # This is a placeholder function to get the user status from the API
 
-    url = "https://platform.backend.test.k8s.mvp.kalavai.net/get_user_pings"
+    url = f"{PLATFORM_BACKEND_ENDPOINT}/get_user_pings"
 
     headers = {
         'Content-Type': 'application/json',
-        'X-API-KEY': USER_PING_API_KEY
+        'X-API-KEY': PLATFORM_BACKEND_API_KEY
     }
 
     payload = {

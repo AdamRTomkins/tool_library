@@ -32,7 +32,7 @@ spec:
         #  value: "http://178.62.13.8:31095"
         - name: CHAT_USE_AUTH
           value: "True"
-        - name: ANVIL_SERVER_UPLINK_KEY
+        - name: ANVIL_UPLINK_KEY
           value: "..."
         command: ["/bin/sh", "-c"]
         args:

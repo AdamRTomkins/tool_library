@@ -4,7 +4,7 @@ import time
 import requests
 from pydantic import BaseModel
 
-PLATFORM_BACKEND_API_KEY = os.getenv("PLATFORM_BACKEND_API_KEY")
+PLATFORM_BACKEND_API_KEY = os.getenv("PLATFORM_BACKEND_API_KEY", "")
 PLATFORM_BACKEND_ENDPOINT = os.getenv("PLATFORM_BACKEND_ENDPOINT", "https://platform.backend.test.k8s.mvp.kalavai.net")
 
 if not PLATFORM_BACKEND_API_KEY or not PLATFORM_BACKEND_ENDPOINT:
@@ -30,9 +30,9 @@ def get_user_status(username):
 
     payload = {
         "username": username,
-        "delta_minutes": 0,
+        "delta_minutes": 0
     }   
-    
+    print(payload)
     all_response = requests.post(url, json=payload, headers=headers)
     all_response.raise_for_status()
 

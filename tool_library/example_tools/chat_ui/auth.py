@@ -3,7 +3,8 @@ import os
 import anvil.server
 import anvil.users
 
-anvil.server.connect(os.getenv("ANVIL_UPLINK_KEY", ""))
+anvil_key = os.getenv("ANVIL_UPLINK_KEY", "")
+anvil.server.connect(anvil_key)
 
 
 def auth_user(username: str, password: str):

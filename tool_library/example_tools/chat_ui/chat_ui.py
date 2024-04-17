@@ -30,7 +30,7 @@ DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "cjbs")
 NO_CONTEXT_MESSAGE = "I'm sorry, I don't know how to respond to that. I could not find any relevant information in the documents I have access too right now."
 
 # Temporary Override Functions
-OVERRIDE_KNOWLEDGE_BASE_URL = os.environ["OVERRIDE_KNOWLEDGE_BASE_URL"]
+OVERRIDE_KNOWLEDGE_BASE_URL = os.environ.get("OVERRIDE_KNOWLEDGE_BASE_URL", "https://knowledgebase.test.k8s.mvp.kalavai.net")
 
 logger.info(f"LLM_API_KEY: {str(LLM_API_KEY)[:4]}...")
 logger.info(f"LLM_MODEL: {LLM_MODEL}")
@@ -89,7 +89,7 @@ def auth_callback(username: str, password: str):
         api_key = user["api_key"]
 
         return cl.User(
-            identifier=username,
+            identifier=user["username"],
             metadata={
                 "username": user["username"],
                 "role": "user",
@@ -404,6 +404,7 @@ async def on_message(message: cl.Message):
         n_responses=n_responses
     )
     logger.debug(f"Logged answer result (n_responses: {n_responses}): {logs}")
+    print(username, n_responses, logs)
     await typed_answer(
         f"{res['answer']}\n[{time.time()-t:.2f} seconds]"
     )

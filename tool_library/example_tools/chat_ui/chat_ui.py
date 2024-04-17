@@ -5,7 +5,10 @@ import os
 from chainlit.input_widget import Switch
 
 from auth import auth_user
-from user_status import get_user_status
+from user_status import (
+    get_user_status,
+    log_user_query
+)
 from chat_utils import (
     StreamHandler,
     typed_answer,
@@ -394,6 +397,13 @@ async def on_message(message: cl.Message):
     if len(private_context) > 0 and not user_status.currently_sharing:
         res["answer"] += f"\n\nThere are __{len(private_context)} of your private sources__ that could be relevant to your query. \n Please *share your resources* to gain access to these sources."
 
+    # log query from the user for monitoring
+    n_responses = len(curtailed_context)+len(gated_context)+len(private_context)
+    logs = log_user_query(
+        username=username,
+        n_responses=n_responses
+    )
+    logger.debug(f"Logged answer result (n_responses: {n_responses}): {logs}")
     await typed_answer(
         f"{res['answer']}\n[{time.time()-t:.2f} seconds]"
     )

@@ -49,3 +49,21 @@ def get_user_status(username):
         #total_share_time=os.environ.get("TOTAL_SHARE_TIME", 100),
         last_updated=time.time(),
     )
+    
+
+def log_user_query(username, n_responses):
+    url = f"{PLATFORM_BACKEND_ENDPOINT}/log_query"
+
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': PLATFORM_BACKEND_API_KEY
+    }
+    payload = {
+        "username": username,
+        "n_responses": n_responses
+    }
+    all_response = requests.post(url, json=payload, headers=headers)
+    all_response.raise_for_status()
+    
+    return all_response.json()
+    

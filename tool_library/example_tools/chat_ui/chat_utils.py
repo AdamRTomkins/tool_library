@@ -102,9 +102,9 @@ class StreamHandler(BaseCallbackHandler):
         self.msg = cl.Message(content="")
 
 
-async def typed_answer(message):
+async def typed_answer(message, actions=None):
     tokens = message.split()
-    msg = cl.Message(content="")
+    msg = cl.Message(content="", actions=actions)
     time.sleep(0.5)
     for token in tokens:
         if "<line>" in token:

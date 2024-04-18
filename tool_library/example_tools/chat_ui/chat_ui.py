@@ -4,7 +4,10 @@ import os
 
 from chainlit.input_widget import Switch
 
-from auth import auth_user
+from platform_utils import (
+    auth_user,
+    fetch_installer
+)
 from user_status import (
     get_user_status,
     log_user_query
@@ -27,7 +30,7 @@ LLM_API_KEY = os.environ["LLM_API_KEY"]
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-3.5-turbo-0125")
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", None)
 DEFAULT_NAMESPACE = os.environ.get("DEFAULT_NAMESPACE", "cjbs")
-NO_CONTEXT_MESSAGE = "I'm sorry, I don't know how to respond to that. I could not find any relevant information in the documents I have access too right now."
+NO_CONTEXT_MESSAGE = "I don't know how to respond to that. I could not find any relevant information in the documents I have access too right now."
 
 # Temporary Override Functions
 OVERRIDE_KNOWLEDGE_BASE_URL = os.environ.get("OVERRIDE_KNOWLEDGE_BASE_URL", "https://knowledgebase.test.k8s.mvp.kalavai.net")
@@ -307,6 +310,27 @@ async def format_sources(base_url, source_documents, answer= ""):
     await cl.Message(content=answer, elements=text_elements).send()
 
 
+@cl.action_callback("install_button")
+async def on_action(action):
+    
+    # fetch installer and download
+    temp_file, filename = fetch_installer(selected_os=action.value)
+    with temp_file as filepath:
+        elements = [
+            cl.File(
+                name=filename,
+                path=filepath,
+                display="inline",
+            ),
+        ]
+
+        await cl.Message(
+            content="Your installer is ready. Run Kalavai client to unlock all content", elements=elements
+        ).send()
+    # Optionally remove the action button from the chatbot user interface
+    await action.remove()
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
 
@@ -365,8 +389,9 @@ async def on_message(message: cl.Message):
     # Could we add some extra logic here to see if perhaps the "Best Match" is in the other gates/private sources?
     # IE, we can say "The best documents to answer your question are gated/private, would you like to share your resources to access them?"
 
-    # Any user that is registared can access the gated context
-    # Update to user_status.currently_sharing for a more restrivtive model.
+    # Any user that is registered can access the gated context
+    # Update to user_status.currently_sharing for a more restrictive model.
+    extra_actions = []
     if user_status.registered:
         context += gated_context
         gated_context = []
@@ -380,22 +405,36 @@ async def on_message(message: cl.Message):
         res = {"answer": NO_CONTEXT_MESSAGE, "context": []}
     else:
         context_str = format_docs(context)
-        generated_message = await chain.ainvoke({"question": message.content, "context": context_str}, {"callbacks": callbacks})
+        generated_message = await chain.ainvoke({"question": message.content, "context": context_str}, {"callbacks": callbacks}, user=username)
         res = {"answer": generated_message, "context": context}
 
     # Mention that there are more results
     if len(curtailed_context) > 0:
         res["answer"] += f"\n\nThere are {len(curtailed_context)} more results that could be relevant. Please refine your search to see more."
 
-    # Mention that there are gated sources that could be relevant to your query
-    # and that they can gain access to these sources by registering
-    if len(gated_context) > 0 and not user_status.registered:
-        res["answer"] += f"\n\nThere are {len(gated_context)} gated sources that could be relevant to your query. Please register to gain access to these sources."
+    if not user_status.registered:
+        # Remind users to install client
+        extra_actions.extend([
+            cl.Action(label="Kalavai client (MacOS)", name="install_button", value="macos", description="Click to download installer"),
+            cl.Action(label="Kalavai client (Windows)", name="install_button", value="windows", description="Click to download installer"),
+            cl.Action(label="Kalavai client (Ubuntu)", name="install_button", value="ubuntu", description="Click to download installer")
+        ])
+        res["answer"] = "I've noticed you haven't shared your device yet. Install our client app to start sharing and unlock more functionality."
 
-    # Mention that there are private sources that could be relevant to your query
-    # and that they can gain access to these sources by sharing their resoures on the kalavai network
-    if len(private_context) > 0 and not user_status.currently_sharing:
-        res["answer"] += f"\n\nThere are __{len(private_context)} of your private sources__ that could be relevant to your query. \n Please *share your resources* to gain access to these sources."
+    # If user not sharing, curtail private and gated content
+    if not user_status.currently_sharing:
+        # Mention that there are gated sources that could be relevant to your query
+        # and that they can gain access to these sources by registering
+        if len(gated_context) > 0:
+            res["answer"] += f"\n\nI found {len(gated_context)} relevant matches in private modules."
+
+        # Mention that there are private sources that could be relevant to your query
+        # and that they can gain access to these sources by sharing their resoures on the kalavai network
+        if len(private_context) > 0:
+            res["answer"] += f"\n\nI found __{len(private_context)} relevant matches against your private documents__."
+        
+        if len(gated_context) + len(private_context) > 0:
+            res["answer"] += "\n\n**To gain access to these sources, share your device with the kalavai client.**"
 
     # log query from the user for monitoring
     n_responses = len(curtailed_context)+len(gated_context)+len(private_context)
@@ -406,7 +445,8 @@ async def on_message(message: cl.Message):
     logger.debug(f"Logged answer result (n_responses: {n_responses}): {logs}")
     print(username, n_responses, logs)
     await typed_answer(
-        f"{res['answer']}\n[{time.time()-t:.2f} seconds]"
+        f"{res['answer']}\n[{time.time()-t:.2f} seconds]",
+        actions=extra_actions
     )
 
     # Add a quick and dirtly formatting of each of the sources. 
